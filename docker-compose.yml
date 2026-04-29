@@ -1,0 +1,56 @@
+version: '3.8'
+
+services:
+  mongodb:
+    image: mongo:latest
+    container_name: dukaflow-mongodb
+    restart: always
+    ports:
+      - "27017:27017"
+    environment:
+      MONGO_INITDB_DATABASE: dukaflow
+    volumes:
+      - mongodb_data:/data/db
+    networks:
+      - dukaflow-network
+
+  backend:
+    build:
+      context: ./server
+      dockerfile: Dockerfile
+    container_name: dukaflow-backend
+    restart: always
+    ports:
+      - "5000:5000"
+    environment:
+      - NODE_ENV=production
+      - MONGODB_URI=mongodb://mongodb:27017/dukaflow
+      - JWT_SECRET=your_super_secret_jwt_key_change_this
+      - JWT_EXPIRE=7d
+      - CLIENT_URL=http://localhost:5173
+    depends_on:
+      - mongodb
+    networks:
+      - dukaflow-network
+
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: dukaflow-frontend
+    restart: always
+    ports:
+      - "80:80"
+    environment:
+      - VITE_API_URL=http://localhost:5000/api
+    depends_on:
+      - backend
+    networks:
+      - dukaflow-network
+
+volumes:
+  mongodb_data:
+
+networks:
+  dukaflow-network:
+    driver: bridge
