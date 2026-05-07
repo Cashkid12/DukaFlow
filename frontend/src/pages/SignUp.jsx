@@ -134,8 +134,8 @@ const SignUpPage = () => {
 
       console.log('🔐 Creating account with Clerk...');
 
-      // Create account with Clerk
-      await signUp.create({
+      // Create account with Clerk (v5+ — this also signs the user in)
+      const result = await signUp.create({
         firstName: formData.fullName.split(' ')[0],
         lastName: formData.fullName.split(' ').slice(1).join(' '),
         emailAddress: formData.email,
@@ -145,28 +145,18 @@ const SignUpPage = () => {
         },
       });
 
-      console.log('✅ Account created, preparing sign-up...');
+      console.log('✅ Account created, status:', result.status);
 
-      // Complete the sign-up process
-      // Use force redirect to ensure it goes to onboarding
-      const completeUrl = window.location.origin + '/onboarding/shop-name';
-      
-      const result = await signUp.complete({
-        redirectUrl: completeUrl,
-      });
-
-      console.log('✅ Sign-up complete status:', result.status);
-      console.log('✅ Sign-up complete result:', result);
-
-      // Force redirect to onboarding using multiple strategies
-      console.log('🚀 Strategy 1: Using window.location.href...');
-      window.location.href = '/onboarding/shop-name';
-      
-      // Fallback timeout in case the above doesn't work
-      setTimeout(() => {
-        console.log('🚀 Strategy 2: Timeout fallback redirect...');
-        window.location.replace('/onboarding/shop-name');
-      }, 1000);
+      // Clerk v5+ automatically signs in after create — redirect
+      if (result.status === 'complete') {
+        console.log('🚀 Sign-up complete, redirecting to onboarding...');
+        window.location.href = '/onboarding/shop-name';
+      } else {
+        // Some additional verification needed (email, phone, etc.)
+        console.log('⚠️ Additional verification required, status:', result.status);
+        setError('Please check your email to verify your account.');
+        setLoading(false);
+      }
     } catch (err) {
       console.error('❌ Sign-up error:', err);
       console.error('Error details:', err.errors);
