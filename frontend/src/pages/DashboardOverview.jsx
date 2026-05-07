@@ -1,5 +1,6 @@
 import React, { useState, useCallback, useMemo } from 'react';
 import { TrendingUp, DollarSign, AlertTriangle, Users, ArrowUpRight, ArrowDownRight, Plus, X, Package, UserPlus, RefreshCw, Store } from 'lucide-react';
+import { useUser } from '@clerk/clerk-react';
 import { useDashboard } from '../hooks/useDashboard';
 import { useDashboardSocket } from '../hooks/useDashboardSocket';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
@@ -7,6 +8,8 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContaine
 const DashboardOverview = () => {
   const [fabOpen, setFabOpen] = useState(false);
   const { data, loading, error, refetch } = useDashboard();
+  const { user } = useUser();
+  const firstName = user?.firstName || '';
 
   // Real-time Socket.io updates
   const handleSocketUpdate = useCallback((updateData) => {
@@ -113,10 +116,10 @@ const DashboardOverview = () => {
             </div>
             <div className="flex-1">
               <h2 className="text-xl sm:text-2xl font-bold mb-1">
-                🎉 Welcome to {shopName || 'DukaFlow'}!
+                🎉 {firstName ? `Welcome, ${firstName}!` : `Welcome to ${shopName || 'DukaFlow'}!`}
               </h2>
               <p className="text-white/80 text-sm sm:text-base">
-                Your shop is all set up. Start by adding products to your inventory or make your first sale.
+                Your shop is all set up. Start by adding products to your inventory.
               </p>
             </div>
           </div>
@@ -129,11 +132,52 @@ const DashboardOverview = () => {
               Add Your First Product
             </button>
             <button
-              onClick={() => window.location.href = '/dashboard/sales'}
+              onClick={() => window.location.href = '/dashboard/workers'}
               className="flex items-center justify-center gap-2 px-5 py-3 bg-white/20 text-white font-semibold rounded-xl hover:bg-white/30 transition-all text-sm border border-white/30"
             >
-              <DollarSign size={18} />
-              Make a Sale
+              <UserPlus size={18} />
+              Invite Workers
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Empty State Card — First-time users with no data */}
+      {isFirstTime && (
+        <div className="flex items-center justify-center min-h-[400px]">
+          <div className="w-full max-w-[500px] bg-white rounded-2xl shadow-sm border border-neutral-200 p-6 sm:p-10 text-center">
+            <Package size={48} className="mx-auto mb-5 text-neutral-300 sm:hidden" />
+            <Package size={64} className="mx-auto mb-5 text-neutral-300 hidden sm:block" />
+            <h3 className="text-[20px] sm:text-2xl font-bold text-neutral-900 mb-2">
+              {firstName ? `Welcome, ${firstName}!` : 'Welcome!'} Your shop is ready.
+            </h3>
+            <p className="text-[14px] sm:text-base text-neutral-500 mb-6">
+              Add your first product to start tracking inventory and sales.
+            </p>
+            <div className="flex flex-col sm:flex-row gap-3 justify-center">
+              <button
+                onClick={() => window.location.href = '/dashboard/inventory'}
+                className="flex items-center justify-center gap-2 px-5 py-3 bg-[#312E81] hover:bg-[#1E1B4B] text-white font-semibold rounded-xl transition-all text-sm shadow-md"
+              >
+                <Package size={18} />
+                Add Your First Product
+              </button>
+              <button
+                onClick={() => window.location.href = '/dashboard/workers'}
+                className="flex items-center justify-center gap-2 px-5 py-3 bg-white border-[1.5px] border-neutral-300 text-neutral-700 font-semibold rounded-xl hover:bg-neutral-50 transition-all text-sm"
+              >
+                <Users size={18} />
+                Invite Workers
+              </button>
+            </div>
+            <button
+              onClick={() => {
+                localStorage.removeItem('onboarding_step2');
+                window.location.reload();
+              }}
+              className="mt-5 text-[14px] text-[#312E81] font-medium hover:underline"
+            >
+              Skip to Dashboard →
             </button>
           </div>
         </div>

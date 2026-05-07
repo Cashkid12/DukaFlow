@@ -1,52 +1,66 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useUser } from '@clerk/clerk-react';
 import { ArrowLeft, ArrowRight, Shirt, Smartphone, ShoppingCart, Sparkles, Wrench, Pill, Check, Loader2 } from 'lucide-react';
 
 const BUSINESS_TYPES = [
   {
     id: 'clothing',
     name: 'Clothing Boutique',
-    subtitle: 'Fashion, shoes & accessories',
+    subtitle: 'Fashion & apparel',
     icon: Shirt,
+    categories: ['Trousers', 'Shirts', 'Dresses', 'Jackets', 'Shoes', 'Accessories'],
+    attributes: ['Size', 'Color', 'Material', 'Brand'],
   },
   {
     id: 'electronics',
     name: 'Electronics Shop',
-    subtitle: 'Phones, gadgets & accessories',
+    subtitle: 'Phones & gadgets',
     icon: Smartphone,
+    categories: ['Phones', 'Laptops', 'Accessories', 'Parts', 'Cables', 'Audio'],
+    attributes: ['Brand', 'Model', 'Condition', 'Warranty'],
   },
   {
     id: 'grocery',
     name: 'Grocery & Duka',
-    subtitle: 'Food, drinks & household items',
+    subtitle: 'Food & essentials',
     icon: ShoppingCart,
+    categories: ['Beverages', 'Dry Foods', 'Fresh Produce', 'Dairy', 'Snacks', 'Household'],
+    attributes: ['Weight/Volume', 'Brand', 'Expiry Date', 'Organic'],
   },
   {
     id: 'cosmetics',
     name: 'Cosmetics Shop',
-    subtitle: 'Beauty, skincare & fragrance',
+    subtitle: 'Beauty & makeup',
     icon: Sparkles,
+    categories: ['Makeup', 'Skincare', 'Hair', 'Fragrance', 'Nails', 'Tools'],
+    attributes: ['Shade', 'Skin Type', 'Expiry Date', 'Brand'],
   },
   {
     id: 'hardware',
     name: 'Hardware Store',
-    subtitle: 'Tools, paint & building supplies',
+    subtitle: 'Tools & supplies',
     icon: Wrench,
+    categories: ['Tools', 'Paint', 'Electrical', 'Plumbing', 'Fasteners', 'Building'],
+    attributes: ['Material', 'Size/Dimensions', 'Unit', 'Brand'],
   },
   {
     id: 'pharmacy',
     name: 'Pharmacy',
-    subtitle: 'Medicine & health products',
+    subtitle: 'Medicines & health',
     icon: Pill,
+    categories: ['Prescription', 'OTC', 'First Aid', 'Vitamins', 'Personal Care', 'Baby'],
+    attributes: ['Strength/Dosage', 'Form', 'Expiry Date', 'Prescription Required'],
   },
 ];
 
 const OnboardingBusinessType = () => {
   const navigate = useNavigate();
+  const { user } = useUser();
   const [selected, setSelected] = useState('');
   const [shopName, setShopName] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [error, setError] = useState('');
+  const [errors, setErrors] = useState({});
 
   // Load step 1 data
   useEffect(() => {
@@ -65,28 +79,59 @@ const OnboardingBusinessType = () => {
 
   const handleCreate = async () => {
     if (!selected) {
-      setError('Please select a business type');
+      setErrors({ businessType: 'Please select a business type' });
       return;
     }
 
     setIsSubmitting(true);
-    setError('');
+    setErrors({});
 
     try {
       const step1 = JSON.parse(localStorage.getItem('onboarding_step1') || '{}');
+      const businessType = BUSINESS_TYPES.find(t => t.id === selected);
+
+      // Build shop data for API
+      const shopData = {
+        shopName: step1.shopName,
+        slug: step1.subdomain,
+        businessType: selected,
+        ownerId: user?.id,
+        settings: {
+          categories: businessType?.categories || [],
+          attributes: businessType?.attributes || [],
+        },
+      };
 
       // Save complete onboarding data
       localStorage.setItem('onboarding_step2', JSON.stringify({
         shopName: step1.shopName,
         subdomain: step1.subdomain,
         businessType: selected,
+        categories: shopData.settings.categories,
+        attributes: shopData.settings.attributes,
       }));
+
+      // Attempt API call — fail gracefully if backend unavailable
+      try {
+        const API_URL = import.meta.env.VITE_API_URL || '';
+        const token = await user?.getToken();
+        await fetch(`${API_URL}/api/shops`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          },
+          body: JSON.stringify(shopData),
+        });
+      } catch (apiErr) {
+        console.warn('Backend not reachable — proceeding with local data:', apiErr.message);
+      }
 
       // Navigate to dashboard
       navigate('/dashboard');
     } catch (err) {
       console.error('Save error:', err);
-      setError('Something went wrong. Please try again.');
+      setErrors({ submit: 'Unable to create shop. Please try again.' });
     } finally {
       setIsSubmitting(false);
     }
@@ -98,8 +143,8 @@ const OnboardingBusinessType = () => {
       style={{ background: 'linear-gradient(135deg, #EEF2FF 0%, #FFFFFF 50%, #FDF2EC 100%)' }}
     >
       {/* Card */}
-      <div className="w-full max-w-[560px] tablet:max-w-[480px] bg-white rounded-3xl shadow-2xl p-6 sm:p-8 md:p-10"
-        style={{ borderRadius: '24px' }}>
+      <div className="w-full max-w-[560px] tablet:max-w-[480px] bg-white rounded-3xl shadow-2xl p-5 sm:p-7 md:p-10 animate-fade-in"
+        style={{ borderRadius: '24px', animation: 'fadeIn 0.3s ease' }}>
 
         {/* Step Indicator */}
         <div className="flex items-center justify-between mb-8">
@@ -121,7 +166,7 @@ const OnboardingBusinessType = () => {
         <h2 className="text-[22px] sm:text-[28px] font-bold text-neutral-900 text-center mb-2">
           What type of duka do you run?
         </h2>
-        <p className="text-[14px] sm:text-[15px] text-neutral-500 text-center mb-8">
+        <p className="text-[14px] sm:text-[15px] text-neutral-500 text-center mb-6 sm:mb-8">
           We'll customize DukaFlow for you
         </p>
 
@@ -134,7 +179,7 @@ const OnboardingBusinessType = () => {
         )}
 
         {/* Business Type Grid */}
-        <div className="grid grid-cols-3 gap-3">
+        <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
           {BUSINESS_TYPES.map((type) => {
             const isSelected = selected === type.id;
             const Icon = type.icon;
@@ -145,38 +190,39 @@ const OnboardingBusinessType = () => {
                 type="button"
                 onClick={() => {
                   setSelected(type.id);
-                  setError('');
+                  setErrors({});
                 }}
-                className={`relative p-4 sm:p-6 rounded-2xl text-center cursor-pointer transition-all duration-150 ${
+                className={`relative p-3 sm:p-5 md:p-6 rounded-2xl text-center cursor-pointer transition-all duration-150 ${
                   isSelected
                     ? 'border-2 border-[#312E81] bg-[#EEF2FF] shadow-md'
-                    : 'border-[1.5px] border-neutral-300 bg-white hover:border-[#6366F1] hover:bg-[#EEF2FF] hover:scale-[1.03]'
+                    : 'border-[1.5px] border-neutral-300 bg-white hover:border-[#6366F1] hover:bg-[#EEF2FF] hover:scale-[1.02] md:hover:scale-[1.03]'
                 }`}
                 style={{ borderRadius: '16px' }}
               >
                 {/* Checkmark */}
                 {isSelected && (
-                  <div className="absolute top-2 right-2 w-6 h-6 rounded-full bg-[#312E81] flex items-center justify-center">
-                    <Check size={14} className="text-white" strokeWidth={3} />
+                  <div className="absolute top-1.5 right-1.5 sm:top-2 sm:right-2 w-5 h-5 sm:w-6 sm:h-6 rounded-full bg-[#312E81] flex items-center justify-center animate-bounce-in"
+                    style={{ animation: 'bounceIn 0.4s ease' }}>
+                    <Check size={12} className="sm:size-14 text-white" strokeWidth={3} />
                   </div>
                 )}
 
                 {/* Icon */}
                 <Icon
-                  size={36}
-                  className="mx-auto mb-3"
+                  size={28}
+                  className="mx-auto mb-2 sm:mb-3 md:size-36"
                   style={{ color: isSelected ? '#312E81' : '#64748B' }}
                 />
 
                 {/* Title */}
-                <p className={`text-sm sm:text-base font-medium mb-1 ${
+                <p className={`text-[14px] sm:text-base font-medium mb-0.5 sm:mb-1 ${
                   isSelected ? 'text-[#312E81]' : 'text-neutral-900'
                 }`}>
                   {type.name}
                 </p>
 
                 {/* Subtitle */}
-                <p className="text-xs text-neutral-500 leading-tight">
+                <p className="text-[11px] sm:text-xs text-neutral-500 leading-tight">
                   {type.subtitle}
                 </p>
               </button>
@@ -185,21 +231,35 @@ const OnboardingBusinessType = () => {
         </div>
 
         {/* Error */}
-        {error && (
-          <p className="mt-3 text-xs text-red-600 text-center">{error}</p>
+        {errors.businessType && (
+          <p className="mt-3 text-xs text-red-600 text-center">{errors.businessType}</p>
+        )}
+
+        {/* Network Error with Retry */}
+        {errors.submit && (
+          <div className="mt-4 p-4 bg-red-50 border border-red-200 rounded-xl text-center" role="alert">
+            <p className="text-sm text-red-700 mb-3">{errors.submit}</p>
+            <button
+              type="button"
+              onClick={handleCreate}
+              className="px-4 py-2 bg-red-600 text-white text-sm font-medium rounded-lg hover:bg-red-700 transition-colors"
+            >
+              Retry
+            </button>
+          </div>
         )}
 
         {/* Navigation Buttons */}
-        <div className="flex gap-3 mt-8">
+        <div className="flex flex-col sm:flex-row gap-3 mt-6 sm:mt-8">
           <button
             type="button"
             onClick={handleBack}
             disabled={isSubmitting}
-            className="h-[48px] sm:h-[52px] px-4 sm:px-6 border-[1.5px] border-neutral-300 text-neutral-700 font-medium rounded-xl hover:bg-neutral-50 hover:border-[#312E81] transition-all duration-200 flex items-center gap-2 disabled:opacity-50"
+            className="h-[48px] sm:h-[52px] px-4 sm:px-6 border-[1.5px] border-neutral-300 text-neutral-700 font-medium rounded-xl hover:bg-neutral-50 hover:border-[#312E81] transition-all duration-200 flex items-center justify-center gap-2 disabled:opacity-50 sm:order-first"
             style={{ borderRadius: '12px' }}
           >
             <ArrowLeft size={18} />
-            <span className="hidden sm:inline">Back</span>
+            <span>Back</span>
           </button>
 
           <button
@@ -216,7 +276,7 @@ const OnboardingBusinessType = () => {
             {isSubmitting ? (
               <>
                 <Loader2 size={18} className="animate-spin" />
-                Creating…
+                Creating your duka…
               </>
             ) : (
               <>

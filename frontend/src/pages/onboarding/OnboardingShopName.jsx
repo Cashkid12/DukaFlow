@@ -26,6 +26,25 @@ const OnboardingShopName = () => {
     }
   }, [firstName]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Progress saving: if step 2 already done, redirect there
+  useEffect(() => {
+    const step2 = localStorage.getItem('onboarding_step2');
+    if (step2) {
+      const parsed = JSON.parse(step2);
+      if (parsed.businessType) {
+        navigate('/dashboard', { replace: true });
+        return;
+      }
+    }
+    // If step 1 already saved but not step 2, restore
+    const saved = localStorage.getItem('onboarding_step1');
+    if (saved) {
+      const data = JSON.parse(saved);
+      if (data.shopName) setShopName(data.shopName);
+      if (data.subdomain) setSubdomain(data.subdomain);
+    }
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
   // Slugify: lowercase, replace spaces/special chars with hyphens, remove apostrophes
   const slugify = (text) => {
     return text
@@ -147,8 +166,8 @@ const OnboardingShopName = () => {
       style={{ background: 'linear-gradient(135deg, #EEF2FF 0%, #FFFFFF 50%, #FDF2EC 100%)' }}
     >
       {/* Card */}
-      <div className="w-full max-w-[520px] tablet:max-w-[480px] bg-white rounded-3xl shadow-2xl p-6 sm:p-8 md:p-10"
-        style={{ borderRadius: '24px' }}>
+      <div className="w-full max-w-[520px] tablet:max-w-[480px] bg-white rounded-3xl shadow-2xl p-6 sm:p-8 md:p-10 animate-fade-in"
+        style={{ borderRadius: '24px', animation: 'fadeIn 0.3s ease' }}>
         
         {/* Step Indicator */}
         <div className="flex items-center justify-between mb-8">
@@ -175,6 +194,20 @@ const OnboardingShopName = () => {
         </p>
 
         <form onSubmit={handleSubmit} className="space-y-5">
+          {/* Form-level Error Banner */}
+          {Object.keys(errors).filter(k => k !== 'submit').length > 0 && (
+            <div className="p-4 bg-red-50 border border-red-200 rounded-xl" role="alert" aria-live="polite">
+              <p className="text-sm font-semibold text-red-800 mb-2">
+                Please fix the following errors:
+              </p>
+              <ul className="text-xs text-red-700 space-y-1 ml-5 list-disc">
+                {Object.entries(errors).filter(([k]) => k !== 'submit').map(([_, msg]) => (
+                  <li key={_}>{msg}</li>
+                ))}
+              </ul>
+            </div>
+          )}
+
           {/* Shop Name */}
           <div>
             <label className="block text-sm font-medium text-neutral-700 mb-1.5">
