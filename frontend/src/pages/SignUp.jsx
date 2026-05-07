@@ -22,10 +22,10 @@ const SignUpPage = () => {
     if (isLoaded && isSignedIn) {
       console.log('✅ User already signed in, redirecting to onboarding...');
       console.log('📍 Current location:', window.location.href);
-      console.log('🎯 Target location: /onboarding');
+      console.log('🎯 Target location: /onboarding/shop-name');
       
       // Use window.location for hard redirect
-      window.location.href = '/onboarding';
+      window.location.href = '/onboarding/shop-name';
     }
   }, [isLoaded, isSignedIn]);
 
@@ -38,7 +38,7 @@ const SignUpPage = () => {
         // Check if there's an active sign-up from OAuth redirect
         if (signUp.status === 'complete') {
           console.log('✅ OAuth sign-up complete, redirecting to onboarding...');
-          window.location.href = '/onboarding';
+          window.location.href = '/onboarding/shop-name';
         } else if (signUp.status === 'missing_requirements') {
           console.log('⚠️ OAuth sign-up needs additional steps...');
           // Clerk will handle the UI for missing requirements
@@ -149,7 +149,7 @@ const SignUpPage = () => {
 
       // Complete the sign-up process
       // Use force redirect to ensure it goes to onboarding
-      const completeUrl = window.location.origin + '/onboarding';
+      const completeUrl = window.location.origin + '/onboarding/shop-name';
       
       const result = await signUp.complete({
         redirectUrl: completeUrl,
@@ -160,12 +160,12 @@ const SignUpPage = () => {
 
       // Force redirect to onboarding using multiple strategies
       console.log('🚀 Strategy 1: Using window.location.href...');
-      window.location.href = '/onboarding';
+      window.location.href = '/onboarding/shop-name';
       
       // Fallback timeout in case the above doesn't work
       setTimeout(() => {
         console.log('🚀 Strategy 2: Timeout fallback redirect...');
-        window.location.replace('/onboarding');
+        window.location.replace('/onboarding/shop-name');
       }, 1000);
     } catch (err) {
       console.error('❌ Sign-up error:', err);
@@ -177,7 +177,7 @@ const SignUpPage = () => {
         console.log('⚠️ User already signed in, redirecting to onboarding...');
         setError('Account created! Redirecting to onboarding...');
         setTimeout(() => {
-          window.location.href = '/onboarding';
+          window.location.href = '/onboarding/shop-name';
         }, 1500);
         return;
       }
@@ -187,7 +187,7 @@ const SignUpPage = () => {
         console.log('⚠️ Redirect URL not allowed, forcing redirect...');
         setError('Account created! Redirecting to onboarding...');
         setTimeout(() => {
-          window.location.href = '/onboarding';
+          window.location.href = '/onboarding/shop-name';
         }, 1500);
         return;
       }
@@ -458,7 +458,7 @@ const SignUpPage = () => {
                     type="button"
                     onClick={() => {
                       console.log('🚀 Manual redirect to onboarding clicked');
-                      window.location.href = '/onboarding';
+                      window.location.href = '/onboarding/shop-name';
                     }}
                     className="text-sm text-[#312E81] font-medium hover:underline"
                   >

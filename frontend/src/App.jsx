@@ -6,7 +6,8 @@ import LandingPage from './pages/LandingPage';
 import SignIn from './pages/SignIn';
 import SignUp from './pages/SignUp';
 import TestOnboarding from './pages/TestOnboarding';
-import OnboardingShop from './pages/onboarding/OnboardingShop';
+import OnboardingShopName from './pages/onboarding/OnboardingShopName';
+import OnboardingBusinessType from './pages/onboarding/OnboardingBusinessType';
 import DashboardLayout from './components/DashboardLayout';
 import DashboardOverview from './pages/DashboardOverview';
 import InventoryPage from './pages/InventoryPage';
@@ -44,14 +45,28 @@ function App() {
         {/* Super Admin Panel */}
         <Route path="/admin" element={<SuperAdminPanel />} />
 
-        {/* Onboarding Route - Post-Signup, First-time only */}
+        {/* Onboarding Routes - Post-Signup, First-time only */}
         <Route
-          path="/onboarding"
+          path="/onboarding/shop-name"
           element={
             <SignedIn>
-              <OnboardingShop />
+              <OnboardingShopName />
             </SignedIn>
           }
+        />
+        <Route
+          path="/onboarding/business-type"
+          element={
+            <SignedIn>
+              <OnboardingBusinessType />
+            </SignedIn>
+          }
+        />
+
+        {/* Redirect old onboarding path */}
+        <Route
+          path="/onboarding"
+          element={<Navigate to="/onboarding/shop-name" replace />}
         />
 
         {/* Protected Dashboard Routes */}
