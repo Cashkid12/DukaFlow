@@ -25,11 +25,11 @@ const TopBar = ({ onMenuToggle }) => {
   return (
     <header 
       className="bg-white border-b border-neutral-200 sticky top-0 z-10"
-      style={{ height: '64px', padding: '0 24px' }}
+      style={{ height: '64px', padding: '0 12px' }}
     >
-      <div className="flex items-center justify-between h-full">
-        {/* Left Section: Hamburger + Shop Name (Mobile) */}
-        <div className="flex items-center gap-4">
+      <div className="flex items-center justify-between h-full max-w-full">
+        {/* Left Section: Hamburger + Shop Name */}
+        <div className="flex items-center gap-2 sm:gap-4 min-w-0 flex-shrink">
           {/* Mobile Hamburger */}
           <button 
             onClick={onMenuToggle}
@@ -74,8 +74,8 @@ const TopBar = ({ onMenuToggle }) => {
             )}
           </div>
 
-          {/* Search Bar */}
-          <div className="relative" style={{ width: '320px' }}>
+          {/* Search Bar — Desktop Only */}
+          <div className="relative hidden lg:block" style={{ width: '280px', maxWidth: '100%' }}>
             <div className="flex items-center gap-2 px-4 py-2 rounded-lg bg-neutral-50">
               <Search size={18} style={{ color: '#9CA3AF' }} />
               <input

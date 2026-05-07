@@ -8,11 +8,12 @@ import {
   BarChart3, 
   Settings, 
   ChevronDown,
-  Store
+  Store,
+  X
 } from 'lucide-react';
 import { UserButton, useUser } from '@clerk/clerk-react';
 
-const Sidebar = () => {
+const Sidebar = ({ isMobileOpen = false, onMobileClose }) => {
   const [isCollapsed, setIsCollapsed] = useState(false);
   const { user } = useUser();
   
@@ -35,16 +36,24 @@ const Sidebar = () => {
     { icon: Settings, label: 'Settings', path: '/dashboard/settings' },
   ];
 
-  return (
-    <aside 
-      className="hidden lg:flex flex-col bg-white border-r border-neutral-200 h-screen sticky top-0 transition-all duration-300"
-      style={{ 
-        width: isCollapsed ? '72px' : '260px'
-      }}
-    >
-      {/* Logo Area */}
+  const sidebarContent = (
+    <>
+      {/* Mobile: Close button at top */}
+      <div className="lg:hidden flex items-center justify-between p-4 border-b border-neutral-200">
+        <h1 className="text-xl font-bold text-[#312E81]">
+          Duka<span style={{ color: '#E8835C' }}>Flow</span>
+        </h1>
+        <button
+          onClick={onMobileClose}
+          className="w-10 h-10 flex items-center justify-center rounded-lg hover:bg-neutral-100"
+        >
+          <X size={22} style={{ color: '#6B7280' }} />
+        </button>
+      </div>
+
+      {/* Logo Area — Desktop */}
       <div 
-        className="flex items-center justify-center border-b border-neutral-200"
+        className="hidden lg:flex items-center justify-center border-b border-neutral-200"
         style={{ 
           height: '72px', 
           padding: '16px'
@@ -183,7 +192,44 @@ const Sidebar = () => {
           </div>
         )}
       </div>
-    </aside>
+    </>
+  );
+
+  return (
+    <>
+      {/* Desktop: Sticky sidebar */}
+      <aside 
+        className="hidden lg:flex flex-col bg-white border-r border-neutral-200 h-screen sticky top-0 transition-all duration-300"
+        style={{ 
+          width: isCollapsed ? '72px' : '260px',
+          flexShrink: 0
+        }}
+      >
+        {sidebarContent}
+      </aside>
+
+      {/* Mobile: Slide-in overlay */}
+      {isMobileOpen && (
+        <>
+          {/* Backdrop */}
+          <div 
+            className="lg:hidden fixed inset-0 bg-black/50 z-40"
+            onClick={onMobileClose}
+          />
+          {/* Sliding panel */}
+          <aside 
+            className="lg:hidden fixed top-0 left-0 bottom-0 bg-white z-50 shadow-2xl transition-transform duration-300 flex flex-col"
+            style={{ 
+              width: '280px',
+              maxWidth: '85vw',
+              transform: isMobileOpen ? 'translateX(0)' : 'translateX(-100%)'
+            }}
+          >
+            {sidebarContent}
+          </aside>
+        </>
+      )}
+    </>
   );
 };
 

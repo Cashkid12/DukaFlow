@@ -5,9 +5,10 @@ export const Button = ({
   children, 
   className = '', 
   icon: Icon,
+  size = 'md',
   ...props 
 }) => {
-  const baseClasses = "font-medium transition-all duration-200 flex items-center justify-center gap-2";
+  const baseClasses = "font-medium transition-all duration-200 flex items-center justify-center gap-2 active:scale-[0.98]";
   
   const variants = {
     primary: "bg-primary hover:bg-primary-deep text-white py-3 px-6 rounded-md shadow-sm hover:shadow-md",
@@ -17,9 +18,15 @@ export const Button = ({
     accent: "bg-accent hover:bg-accent-deep text-white py-3 px-6 rounded-md shadow-sm hover:shadow-md",
   };
 
+  const sizes = {
+    sm: 'h-9 text-sm px-4',
+    md: 'h-11 text-sm',
+    lg: 'h-12 text-base',
+  };
+
   return (
     <button 
-      className={`${baseClasses} ${variants[variant]} ${className}`}
+      className={`${baseClasses} ${variants[variant]} ${sizes[size]} min-h-[44px] ${className}`}
       {...props}
     >
       {Icon && <Icon size={18} />}

@@ -104,10 +104,11 @@ const SettingsPage = () => {
         <p className="text-neutral-600">Manage your shop preferences and account settings.</p>
       </div>
 
-      <div className="flex gap-6">
-        {/* Vertical Tabs */}
-        <div className="w-64 flex-shrink-0">
-          <nav className="bg-white rounded-xl shadow-sm p-2">
+      <div className="flex flex-col lg:flex-row gap-4 lg:gap-6">
+        {/* Vertical Tabs — Desktop / Horizontal Scroll — Mobile */}
+        <div className="lg:w-64 flex-shrink-0">
+          {/* Desktop: vertical tabs */}
+          <nav className="hidden lg:block bg-white rounded-xl shadow-sm p-2">
             {tabs.map((tab) => {
               const Icon = tab.icon;
               return (
@@ -126,6 +127,28 @@ const SettingsPage = () => {
               );
             })}
           </nav>
+          {/* Mobile: horizontal scrollable tabs */}
+          <div className="lg:hidden overflow-x-auto -mx-3 px-3 pb-1">
+            <div className="flex gap-2 min-w-max">
+              {tabs.map((tab) => {
+                const Icon = tab.icon;
+                return (
+                  <button
+                    key={tab.id}
+                    onClick={() => setActiveTab(tab.id)}
+                    className={`flex items-center gap-2 px-4 py-2.5 rounded-lg whitespace-nowrap transition-all duration-200 text-sm font-medium ${
+                      activeTab === tab.id
+                        ? 'bg-[#312E81] text-white shadow-md'
+                        : 'bg-white text-neutral-600 border border-neutral-200 hover:border-neutral-300'
+                    }`}
+                  >
+                    <Icon size={16} />
+                    <span>{tab.label}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
         </div>
 
         {/* Tab Content */}
