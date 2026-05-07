@@ -541,23 +541,34 @@ const LandingPage = () => {
           backgroundSize: '40px 40px'
         }}></div>
 
-        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8" style={{ minHeight: '90vh', paddingTop: '80px' }}>
-          <div className="grid lg:grid-cols-2 gap-12 items-center" style={{ minHeight: 'calc(90vh - 80px)' }}>
+        <div className="relative w-full max-w-7xl mx-auto px-5 sm:px-10 lg:px-16"
+          style={{
+            minHeight: '90vh',
+            paddingTop: '48px',
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+          }}>
+          <div className="grid lg:grid-cols-2 gap-12 items-center w-full" style={{ minHeight: 'calc(90vh - 48px)' }}>
             {/* Left Column */}
             <div style={{ 
-              padding: '80px 0 80px 64px',
+              padding: '48px 0',
               display: 'flex',
               flexDirection: 'column',
-              justifyContent: 'center'
-            }}>
+              alignItems: 'flex-start',
+              width: '100%',
+            }}
+              className="items-center lg:items-start">
               {/* Headline - Line 1 */}
               <h1 
+                className="text-center lg:text-left"
                 style={{ 
-                  fontSize: 'clamp(34px, 5vw, 52px)',
+                  fontSize: 'clamp(32px, 5vw, 52px)',
                   fontWeight: 700,
-                  lineHeight: 'clamp(1.2, 1.1, 1.1)',
-                  marginBottom: '8px',
-                  color: '#111827',
+                  lineHeight: 1.2,
+                  marginBottom: '4px',
+                  color: '#1E293B',
+                  width: '100%',
                   animation: prefersReducedMotion ? 'none' : 'fadeUp 0.5s ease 0ms both'
                 }}
               >
@@ -576,16 +587,16 @@ const LandingPage = () => {
               
               {/* Subheadline */}
               <p
+                className="text-center lg:text-left"
                 style={{
                   fontSize: 'clamp(16px, 2vw, 18px)',
                   fontWeight: 400,
                   lineHeight: 1.6,
-                  color: '#4B5563',
-                  maxWidth: '520px',
-                  marginTop: 'clamp(16px, 3vw, 24px)',
-                  marginBottom: 'clamp(24px, 4vw, 32px)',
-                  padding: '0 clamp(0px, 2vw, 8px)',
-                  textAlign: 'center',
+                  color: '#64748B',
+                  maxWidth: '100%',
+                  width: '100%',
+                  marginTop: '16px',
+                  marginBottom: '8px',
                   animation: prefersReducedMotion ? 'none' : 'fadeUp 0.5s ease 200ms both'
                 }}
               >
@@ -593,12 +604,14 @@ const LandingPage = () => {
               </p>
               
               {/* Button Group */}
-              <div style={{
+              <div className="w-full lg:w-auto"
+                style={{
                 display: 'flex',
                 flexDirection: 'column',
-                gap: 'clamp(12px, 2vw, 16px)',
-                marginTop: 'clamp(24px, 4vw, 32px)',
+                gap: '12px',
+                marginTop: '24px',
                 width: '100%',
+                maxWidth: '320px',
                 animation: prefersReducedMotion ? 'none' : 'fadeUp 0.5s ease 300ms both'
               }}>
                 {/* Primary CTA - Start Free Trial */}
@@ -606,12 +619,12 @@ const LandingPage = () => {
                   <button
                     className="group w-full"
                     style={{
-                      padding: 'clamp(14px, 2vw, 16px) clamp(20px, 3vw, 28px)',
+                      height: '52px',
                       fontSize: '16px',
                       fontWeight: 600,
                       color: 'white',
                       backgroundColor: '#312E81',
-                      borderRadius: '10px',
+                      borderRadius: '12px',
                       boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
                       border: 'none',
                       cursor: 'pointer',
@@ -643,13 +656,13 @@ const LandingPage = () => {
                 <button
                   className="group w-full"
                   style={{
-                    padding: 'clamp(14px, 2vw, 16px) clamp(20px, 3vw, 28px)',
+                    height: '52px',
                     fontSize: '16px',
                     fontWeight: 500,
                     color: '#374151',
                     backgroundColor: 'white',
-                    border: '1px solid #D1D5DB',
-                    borderRadius: '10px',
+                    border: '1.5px solid #CBD5E1',
+                    borderRadius: '12px',
                     cursor: 'pointer',
                     transition: 'all 0.2s ease',
                     display: 'flex',
@@ -676,20 +689,21 @@ const LandingPage = () => {
               </div>
 
               {/* Trust Badges */}
-              <div style={{
+              <div className="w-full"
+                style={{
                 display: 'flex',
                 flexWrap: 'wrap',
                 justifyContent: 'center',
-                gap: 'clamp(12px, 2vw, 20px)',
-                marginTop: 'clamp(24px, 4vw, 32px)',
+                gap: '16px',
+                marginTop: '20px',
                 animation: prefersReducedMotion ? 'none' : 'fadeUp 0.4s ease 400ms both'
               }}>
                 <div style={{
                   display: 'flex',
                   alignItems: 'center',
-                  fontSize: 'clamp(12px, 1.5vw, 13px)',
+                  fontSize: '13px',
                   fontWeight: 500,
-                  color: '#6B7280'
+                  color: '#64748B'
                 }}>
                   <Check size={14} style={{ marginRight: '6px', color: '#43B02A' }} />
                   No credit card
@@ -697,9 +711,9 @@ const LandingPage = () => {
                 <div style={{
                   display: 'flex',
                   alignItems: 'center',
-                  fontSize: 'clamp(12px, 1.5vw, 13px)',
+                  fontSize: '13px',
                   fontWeight: 500,
-                  color: '#6B7280'
+                  color: '#64748B'
                 }}>
                   <Check size={14} style={{ marginRight: '6px', color: '#43B02A' }} />
                   14-day trial
@@ -707,9 +721,9 @@ const LandingPage = () => {
                 <div style={{
                   display: 'flex',
                   alignItems: 'center',
-                  fontSize: 'clamp(12px, 1.5vw, 13px)',
+                  fontSize: '13px',
                   fontWeight: 500,
-                  color: '#6B7280'
+                  color: '#64748B'
                 }}>
                   <Check size={14} style={{ marginRight: '6px', color: '#43B02A' }} />
                   Cancel anytime
@@ -722,6 +736,8 @@ const LandingPage = () => {
                 style={{
                   marginTop: '40px',
                   width: '100%',
+                  maxWidth: '340px',
+                  alignSelf: 'center',
                   animation: prefersReducedMotion ? 'none' : 'fadeInScale 0.6s ease 400ms both'
                 }}
               >
