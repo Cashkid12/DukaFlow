@@ -220,6 +220,33 @@ img, video, canvas, svg {
   }
 }
 
+/* Mobile container enforcement — prevent overflow on all containers */
+@media (max-width: 640px) {
+  .container, 
+  .wrapper, 
+  .content {
+    width: 100% !important;
+    max-width: 100vw !important;
+    padding-left: 16px !important;
+    padding-right: 16px !important;
+  }
+}
+
+/* Footer contact info — never cut off */
+.footer-contact {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+@media (max-width: 640px) {
+  .footer-contact {
+    overflow-wrap: break-word;
+    word-break: break-all;
+    white-space: normal;
+  }
+}
+
 /* Typography Classes */
 .h1 {
   font-size: 36px;
