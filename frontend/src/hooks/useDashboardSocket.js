@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { io } from 'socket.io-client';
 
 const SOCKET_URL = import.meta.env.VITE_SOCKET_URL || 'http://localhost:5000';
@@ -9,7 +9,7 @@ const SOCKET_URL = import.meta.env.VITE_SOCKET_URL || 'http://localhost:5000';
  * @param {Function} onUpdate - Callback function when update received
  */
 export const useDashboardSocket = (shopId, onUpdate) => {
-  const socketRef = null;
+  const socketRef = useRef(null);
 
   useEffect(() => {
     if (!shopId || !onUpdate) return;

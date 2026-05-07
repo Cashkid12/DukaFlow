@@ -1,128 +1,144 @@
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@clerk/clerk-react';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 
 /**
- * Enhanced dashboard hook with React Query
- * Features:
- * - Automatic caching (1 minute stale time)
- * - Background refetching every 60 seconds
- * - Refetch on window focus
- * - Individual component retry
+ * Default empty dashboard structure — returned when backend is unavailable
+ * or when the shop has no data yet. NEVER shows an error to the user.
  */
-export const useDashboardQuery = (date = null) => {
+const EMPTY_DASHBOARD = {
+  hasData: false,
+  shopId: null,
+  shopName: 'Your Shop',
+  todaySales: 0,
+  todaySalesTrend: null,
+  todayProfit: 0,
+  todayProfitTrend: null,
+  lowStockCount: 0,
+  activeWorkers: 0,
+  onlineWorkers: 0,
+  chartData: [],
+  recentTransactions: [],
+  alerts: [],
+  workerPerformance: [],
+  date: new Date().toISOString().split('T')[0],
+};
+
+/**
+ * Transform chart data from backend format to recharts format.
+ * Backend: [{ _id: { date, day }, sales, profit }]
+ * Recharts: [{ day, sales, profit }]
+ */
+const transformChartData = (chartData) => {
+  if (!chartData || chartData.length === 0) return [];
+  return chartData.map((item) => ({
+    day: item._id?.day || item.day || '',
+    date: item._id?.date || item.date || '',
+    sales: item.sales || 0,
+    profit: item.profit || 0,
+  }));
+};
+
+/**
+ * Compute hasData from API response — true if shop has any products or sales.
+ */
+const computeHasData = (data) => {
+  if (!data) return false;
+  return (
+    data.todaySales > 0 ||
+    data.recentTransactions?.length > 0 ||
+    data.chartData?.length > 0 ||
+    data.lowStockCount > 0 ||
+    data.activeWorkers > 0
+  );
+};
+
+/**
+ * React Query hook for dashboard data.
+ * - Fetches GET /api/dashboard with Clerk Bearer token
+ * - On network error: throws so component can show error UI with retry
+ * - On HTTP error (4xx/5xx): returns EMPTY_DASHBOARD gracefully
+ * - On success: transforms chart data and computes hasData
+ * - 60s stale time, refetches on window focus
+ */
+export const useDashboardQuery = () => {
   const { getToken } = useAuth();
+  const queryClient = useQueryClient();
 
-  return useQuery({
-    queryKey: ['dashboard', date],
+  const query = useQuery({
+    queryKey: ['dashboard'],
     queryFn: async () => {
-      try {
-        const token = await getToken();
-        if (!token) {
-          throw new Error('Not authenticated. Please sign in again.');
-        }
+      const token = await getToken();
+      if (!token) {
+        // No token yet — return empty, Clerk will redirect to sign-in
+        return EMPTY_DASHBOARD;
+      }
 
-        const queryParams = date ? `?date=${date}` : '';
-        const response = await fetch(`${API_BASE_URL}/dashboard${queryParams}`, {
+      let response;
+      try {
+        response = await fetch(`${API_BASE_URL}/dashboard`, {
           headers: {
-            'Authorization': `Bearer ${token}`,
+            Authorization: `Bearer ${token}`,
             'Content-Type': 'application/json',
           },
         });
-
-        if (!response.ok) {
-          const errorData = await response.json().catch(() => ({}));
-          
-          // Handle specific error cases
-          if (response.status === 401) {
-            throw new Error('Session expired. Please sign in again.');
-          }
-          if (response.status === 400) {
-            throw new Error(errorData.message || 'Shop not set up. Please complete onboarding.');
-          }
-          
-          throw new Error(errorData.message || 'Failed to fetch dashboard data');
-        }
-
-        const result = await response.json();
-        return result.data;
-      } catch (error) {
-        console.error('Dashboard fetch error:', error);
-        throw error;
+      } catch (networkErr) {
+        // Network failure (offline, DNS, timeout) → throw so error UI appears
+        console.error('Dashboard network error:', networkErr.message);
+        throw new Error('Unable to load dashboard data');
       }
-    },
-    // Cache strategy
-    staleTime: 60 * 1000, // 1 minute
-    refetchInterval: 60 * 1000, // Refetch every 60 seconds
-    refetchOnWindowFocus: true, // Refetch when user returns to tab
-    refetchOnMount: true,
-    retry: 1, // Retry failed requests once
-    retryDelay: 1000, // Wait 1 second before retry
-  });
-};
 
-/**
- * Hook for fetching only chart data (longer cache)
- */
-export const useDashboardChart = (date = null) => {
-  const { getToken } = useAuth();
-
-  return useQuery({
-    queryKey: ['dashboard', 'chart', date],
-    queryFn: async () => {
-      const token = await getToken();
-      if (!token) throw new Error('No authentication token');
-
-      const queryParams = date ? `?date=${date}` : '';
-      const response = await fetch(`${API_BASE_URL}/dashboard${queryParams}`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-      });
-
-      if (!response.ok) throw new Error('Failed to fetch chart data');
+      if (!response.ok) {
+        // Backend error — log it but return empty state to user
+        console.warn('Dashboard API returned', response.status);
+        return EMPTY_DASHBOARD;
+      }
 
       const result = await response.json();
-      return result.data.chartData;
+
+      if (!result.success || !result.data) {
+        return EMPTY_DASHBOARD;
+      }
+
+      const raw = result.data;
+
+      return {
+        hasData: computeHasData(raw),
+        shopId: raw.shopId || null,
+        shopName: raw.shopName || 'Your Shop',
+        todaySales: raw.todaySales ?? 0,
+        todaySalesTrend: raw.todaySalesTrend ?? null,
+        todayProfit: raw.todayProfit ?? 0,
+        todayProfitTrend: raw.todayProfitTrend ?? null,
+        lowStockCount: raw.lowStockCount ?? 0,
+        activeWorkers: raw.activeWorkers ?? 0,
+        onlineWorkers: raw.onlineWorkers ?? 0,
+        chartData: transformChartData(raw.chartData),
+        recentTransactions: raw.recentTransactions || [],
+        alerts: raw.alerts || [],
+        workerPerformance: raw.workerPerformance || [],
+        date: raw.date || EMPTY_DASHBOARD.date,
+      };
     },
-    staleTime: 5 * 60 * 1000, // 5 minutes for chart
-    refetchInterval: 5 * 60 * 1000, // Refetch every 5 minutes
+    staleTime: 60 * 1000,
     refetchOnWindowFocus: true,
     retry: 1,
+    placeholderData: (prev) => prev,
   });
-};
 
-/**
- * Hook for fetching only alerts (shorter cache)
- */
-export const useDashboardAlerts = () => {
-  const { getToken } = useAuth();
+  /**
+   * Force-refresh dashboard (called by socket listeners).
+   */
+  const invalidate = () => {
+    queryClient.invalidateQueries({ queryKey: ['dashboard'] });
+  };
 
-  return useQuery({
-    queryKey: ['dashboard', 'alerts'],
-    queryFn: async () => {
-      const token = await getToken();
-      if (!token) throw new Error('No authentication token');
-
-      const response = await fetch(`${API_BASE_URL}/dashboard`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-      });
-
-      if (!response.ok) throw new Error('Failed to fetch alerts');
-
-      const result = await response.json();
-      return result.data.alerts;
-    },
-    staleTime: 2 * 60 * 1000, // 2 minutes
-    refetchInterval: 2 * 60 * 1000, // Refetch every 2 minutes
-    refetchOnWindowFocus: true,
-    retry: 1,
-  });
+  return {
+    ...query,
+    data: query.data || EMPTY_DASHBOARD,
+    invalidate,
+  };
 };
 
 export default useDashboardQuery;

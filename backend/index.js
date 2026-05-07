@@ -41,9 +41,6 @@ app.use(cookieParser());
 // Make io accessible to routes
 app.set('io', io);
 
-// Connect to Database
-connectDB();
-
 // Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/products', productRoutes);
@@ -79,11 +76,18 @@ app.use((err, req, res, next) => {
   });
 });
 
-// Start server
-const PORT = process.env.PORT || 5000;
-server.listen(PORT, () => {
-  console.log(`🚀 Server running on port ${PORT}`);
-  console.log(`📊 Environment: ${process.env.NODE_ENV}`);
-});
+// Connect to Database and start server
+const startServer = async () => {
+  await connectDB();
+
+  // Start server
+  const PORT = process.env.PORT || 5000;
+  server.listen(PORT, () => {
+    console.log(`🚀 Server running on port ${PORT}`);
+    console.log(`📊 Environment: ${process.env.NODE_ENV}`);
+  });
+};
+
+startServer();
 
 module.exports = { app, io };

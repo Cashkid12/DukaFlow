@@ -284,13 +284,19 @@ exports.getDashboardData = async (req, res) => {
       })
     );
 
+    // Compute hasData: true if shop has any products or sales
+    const totalProducts = await Product.countDocuments({ shop: shopId });
+    const hasData = todaySales > 0 || totalProducts > 0 || activeWorkersCount > 0;
+
     res.status(200).json({
       success: true,
       data: {
+        shopId: shopId.toString(),
+        hasData,
         todaySales,
-        todaySalesTrend: salesTrend,
+        todaySalesTrend: yesterdaySales > 0 ? salesTrend : null,
         todayProfit,
-        todayProfitTrend: profitTrend,
+        todayProfitTrend: yesterdayProfit > 0 ? profitTrend : null,
         lowStockCount,
         activeWorkers: activeWorkersCount,
         onlineWorkers: onlineWorkersCount,
