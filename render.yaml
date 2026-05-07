@@ -1,4 +1,7 @@
 services:
+  # ──────────────────────────────────────────────
+  # BACKEND API
+  # ──────────────────────────────────────────────
   - type: web
     name: dukaflow-api
     runtime: node
@@ -13,6 +16,10 @@ services:
         value: 5000
       - key: MONGODB_URI
         sync: false
+      - key: CLERK_SECRET_KEY
+        sync: false
+      - key: CLERK_WEBHOOK_SECRET
+        sync: false
       - key: JWT_SECRET
         generateValue: true
       - key: JWT_EXPIRE
@@ -26,4 +33,22 @@ services:
       - key: EMAIL_USER
         sync: false
       - key: EMAIL_PASS
+        sync: false
+
+  # ──────────────────────────────────────────────
+  # FRONTEND (Vite + React)
+  # ──────────────────────────────────────────────
+  - type: web
+    name: dukaflow-frontend
+    runtime: node
+    region: oregon
+    plan: free
+    buildCommand: cd frontend && npm install && npm run build
+    startCommand: cd frontend && npx vite preview --host 0.0.0.0 --port 5173
+    envVars:
+      - key: VITE_CLERK_PUBLISHABLE_KEY
+        sync: false
+      - key: VITE_API_URL
+        sync: false
+      - key: VITE_SOCKET_URL
         sync: false
