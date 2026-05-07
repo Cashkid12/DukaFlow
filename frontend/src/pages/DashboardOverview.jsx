@@ -1,5 +1,5 @@
-import React, { useState, useCallback } from 'react';
-import { TrendingUp, DollarSign, AlertTriangle, Users, ArrowUpRight, ArrowDownRight, Plus, X, Package, UserPlus, RefreshCw } from 'lucide-react';
+import React, { useState, useCallback, useMemo } from 'react';
+import { TrendingUp, DollarSign, AlertTriangle, Users, ArrowUpRight, ArrowDownRight, Plus, X, Package, UserPlus, RefreshCw, Store } from 'lucide-react';
 import { useDashboard } from '../hooks/useDashboard';
 import { useDashboardSocket } from '../hooks/useDashboardSocket';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
@@ -19,6 +19,17 @@ const DashboardOverview = () => {
   // eslint-disable-next-line no-unused-vars
   const shopId = data?.shopId; // Uncomment when shopId is available
   // useDashboardSocket(shopId, handleSocketUpdate);
+
+  // Get shop name for welcome banner
+  const shopName = useMemo(() => {
+    const data = localStorage.getItem('onboarding_step2');
+    if (data) {
+      return JSON.parse(data).shopName || '';
+    }
+    return '';
+  }, []);
+
+  const isFirstTime = !!shopName; // Just completed onboarding
 
   // Loading state
   if (loading) {
@@ -93,6 +104,41 @@ const DashboardOverview = () => {
 
   return (
     <div className="space-y-6">
+      {/* Welcome Banner — First-time users */}
+      {isFirstTime && (
+        <div className="bg-gradient-to-r from-[#312E81] to-[#6366F1] rounded-2xl p-6 sm:p-8 text-white animate-fade-in">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
+            <div className="w-14 h-14 rounded-xl bg-white/20 flex items-center justify-center flex-shrink-0">
+              <Store size={28} className="text-white" />
+            </div>
+            <div className="flex-1">
+              <h2 className="text-xl sm:text-2xl font-bold mb-1">
+                🎉 Welcome to {shopName || 'DukaFlow'}!
+              </h2>
+              <p className="text-white/80 text-sm sm:text-base">
+                Your shop is all set up. Start by adding products to your inventory or make your first sale.
+              </p>
+            </div>
+          </div>
+          <div className="flex flex-col sm:flex-row gap-3 mt-5">
+            <button
+              onClick={() => window.location.href = '/dashboard/inventory'}
+              className="flex items-center justify-center gap-2 px-5 py-3 bg-white text-[#312E81] font-semibold rounded-xl hover:bg-white/90 transition-all text-sm"
+            >
+              <Plus size={18} />
+              Add Your First Product
+            </button>
+            <button
+              onClick={() => window.location.href = '/dashboard/sales'}
+              className="flex items-center justify-center gap-2 px-5 py-3 bg-white/20 text-white font-semibold rounded-xl hover:bg-white/30 transition-all text-sm border border-white/30"
+            >
+              <DollarSign size={18} />
+              Make a Sale
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Page Header */}
       <div>
         <h1 className="text-2xl font-bold text-neutral-900">Dashboard Overview</h1>

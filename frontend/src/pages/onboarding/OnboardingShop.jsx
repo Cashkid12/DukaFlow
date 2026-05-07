@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowRight, ArrowLeft, Store, Check, Upload } from 'lucide-react';
+import { ArrowRight, Store, Check, Upload } from 'lucide-react';
 import OnboardingLayout from '../../components/onboarding/OnboardingLayout';
 
 const OnboardingShop = () => {
@@ -24,13 +24,7 @@ const OnboardingShop = () => {
     if (savedDraft) {
       setFormData(JSON.parse(savedDraft));
     }
-
-    // Check if step 1 is completed
-    const step1 = localStorage.getItem('onboarding_step1');
-    if (!step1) {
-      navigate('/onboarding');
-    }
-  }, [navigate]);
+  }, []);
 
   // Auto-save draft
   useEffect(() => {
@@ -143,11 +137,11 @@ const OnboardingShop = () => {
       // TODO: Save to backend API
       // await api.post('/onboarding/step2', formData);
       
-      // Save to localStorage for now
+      // Save to localStorage
       localStorage.setItem('onboarding_step2', JSON.stringify(formData));
       
-      // Navigate to next step
-      navigate('/onboarding/ready');
+      // Navigate directly to dashboard
+      navigate('/dashboard');
     } catch (error) {
       console.error('Error saving shop details:', error);
       setErrors({ submit: 'Failed to save. Please try again.' });
@@ -156,23 +150,19 @@ const OnboardingShop = () => {
     }
   };
 
-  const handleBack = () => {
-    navigate('/onboarding');
-  };
-
   return (
-    <OnboardingLayout currentStep={2}>
+    <OnboardingLayout currentStep={1}>
       <div className="bg-white rounded-2xl shadow-xl p-6 sm:p-8">
         <div className="flex items-center gap-3 mb-2">
           <div className="w-10 h-10 rounded-lg bg-[#EEF2FF] flex items-center justify-center">
             <Store size={20} style={{ color: '#312E81' }} />
           </div>
           <h2 className="text-xl sm:text-2xl font-bold text-neutral-900">
-            Shop Details
+            Set Up Your Shop
           </h2>
         </div>
         <p className="text-sm text-neutral-500 mb-6 sm:mb-8">
-          Tell us about your business
+          Just two quick details and you're ready to go
         </p>
 
         <form onSubmit={handleSubmit} className="space-y-5 sm:space-y-6">
@@ -382,15 +372,7 @@ const OnboardingShop = () => {
           )}
 
           {/* Navigation Buttons */}
-          <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
-            <button
-              type="button"
-              onClick={handleBack}
-              className="flex items-center justify-center gap-2 px-6 h-12 border-2 border-neutral-300 text-neutral-700 font-semibold rounded-lg hover:bg-neutral-50 transition-all duration-200"
-            >
-              <ArrowLeft size={20} />
-              Back
-            </button>
+          <div className="flex gap-3 sm:gap-4">
             <button
               type="submit"
               disabled={isSubmitting}
@@ -400,7 +382,7 @@ const OnboardingShop = () => {
                   : 'bg-[#312E81] hover:bg-[#1E1B4B] text-white shadow-md hover:shadow-lg'
               }`}
             >
-              {isSubmitting ? 'Saving...' : 'Continue'}
+              {isSubmitting ? 'Setting Up...' : 'Go to Dashboard'}
               <ArrowRight size={20} />
             </button>
           </div>

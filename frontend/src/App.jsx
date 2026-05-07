@@ -6,9 +6,7 @@ import LandingPage from './pages/LandingPage';
 import SignIn from './pages/SignIn';
 import SignUp from './pages/SignUp';
 import TestOnboarding from './pages/TestOnboarding';
-import OnboardingAccount from './pages/onboarding/OnboardingAccount';
 import OnboardingShop from './pages/onboarding/OnboardingShop';
-import OnboardingReady from './pages/onboarding/OnboardingReady';
 import DashboardLayout from './components/DashboardLayout';
 import DashboardOverview from './pages/DashboardOverview';
 import InventoryPage from './pages/InventoryPage';
@@ -46,28 +44,12 @@ function App() {
         {/* Super Admin Panel */}
         <Route path="/admin" element={<SuperAdminPanel />} />
 
-        {/* Onboarding Routes - Protected, First-time only */}
+        {/* Onboarding Route - Post-Signup, First-time only */}
         <Route
           path="/onboarding"
           element={
             <SignedIn>
-              <OnboardingAccount />
-            </SignedIn>
-          }
-        />
-        <Route
-          path="/onboarding/shop"
-          element={
-            <SignedIn>
               <OnboardingShop />
-            </SignedIn>
-          }
-        />
-        <Route
-          path="/onboarding/ready"
-          element={
-            <SignedIn>
-              <OnboardingReady />
             </SignedIn>
           }
         />

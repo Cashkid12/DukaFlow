@@ -14,21 +14,15 @@ const OnboardingLayout = ({ currentStep, children }) => {
   }, [location.pathname]);
 
   const steps = [
-    { number: 1, title: 'Account', path: '/onboarding' },
-    { number: 2, title: 'Shop Details', path: '/onboarding/shop' },
-    { number: 3, title: 'Ready', path: '/onboarding/ready' },
+    { number: 1, title: 'Shop Setup', path: '/onboarding' },
+    { number: 2, title: 'Dashboard', path: '/dashboard' },
   ];
 
   const progress = (currentStep / steps.length) * 100;
 
   // Prevent skipping ahead
   React.useEffect(() => {
-    const step1Completed = localStorage.getItem('onboarding_step1');
-    const step2Completed = localStorage.getItem('onboarding_step2');
-
-    if (currentStep === 2 && !step1Completed) {
-      navigate('/onboarding');
-    } else if (currentStep === 3 && (!step1Completed || !step2Completed)) {
+    if (currentStep === 2 && !localStorage.getItem('onboarding_step2')) {
       navigate('/onboarding');
     }
   }, [currentStep, navigate]);
@@ -61,7 +55,7 @@ const OnboardingLayout = ({ currentStep, children }) => {
           </div>
           
           {/* Progress Track - Desktop (with labels) */}
-          <div className="hidden sm:flex gap-2" role="progressbar" aria-valuenow={currentStep} aria-valuemin={1} aria-valuemax={3} aria-label="Onboarding progress">
+          <div className="hidden sm:flex gap-2" role="progressbar" aria-valuenow={currentStep} aria-valuemin={1} aria-valuemax={2} aria-label="Onboarding progress">
             {steps.map((step) => (
               <div
                 key={step.number}
@@ -75,7 +69,7 @@ const OnboardingLayout = ({ currentStep, children }) => {
           </div>
 
           {/* Progress Track - Mobile (dots only) */}
-          <div className="flex sm:hidden justify-center gap-3" role="progressbar" aria-valuenow={currentStep} aria-valuemin={1} aria-valuemax={3} aria-label="Onboarding progress">
+          <div className="flex sm:hidden justify-center gap-3" role="progressbar" aria-valuenow={currentStep} aria-valuemin={1} aria-valuemax={2} aria-label="Onboarding progress">
             {steps.map((step) => (
               <div
                 key={step.number}
