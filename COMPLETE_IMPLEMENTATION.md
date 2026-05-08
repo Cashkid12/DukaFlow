@@ -6,7 +6,7 @@
 
 **Tagline:** "Run Your Duka, Smarter."
 
-**Status:** ✅ **COMPLETE** - All pages, backend infrastructure, cron jobs, Socket.io real-time features, and deployment configs implemented.
+**Status:** ✅ **COMPLETE** — All pages, backend infrastructure, cron jobs, Socket.io real-time features, Clerk authentication, and deployment configs implemented.
 
 ---
 
@@ -113,19 +113,35 @@ All cron jobs are automatically initialized when the server starts via `server/s
 
 ### Client-Side Hook
 
-**File:** `src/hooks/useSocket.js`
+**File:** `frontend/src/hooks/useDashboardSocket.js`
 
 ```javascript
-import { useSocket } from '../hooks/useSocket';
+import { useDashboardSocket } from '../hooks/useDashboardSocket';
 
 function Dashboard() {
-  const socket = useSocket(shopId);
-  
   // Socket automatically:
   // 1. Connects to server
   // 2. Joins shop-specific room
   // 3. Listens for real-time events
-  // 4. Cleans up on unmount
+  // 4. Invalidates React Query cache to trigger refetch
+  // 5. Cleans up on unmount
+  useDashboardSocket(shopId);
+}
+```
+
+### Data Fetching Hook
+
+**File:** `frontend/src/hooks/useDashboardQuery.js`
+
+```javascript
+import { useDashboardQuery } from '../hooks/useDashboardQuery';
+
+function Dashboard() {
+  const { data, isLoading, isError, error, refetch } = useDashboardQuery();
+  
+  // data.hasData → determines empty vs data state
+  // isLoading → show skeleton
+  // isError → show error UI with retry
 }
 ```
 
@@ -170,19 +186,39 @@ src/
 │   ├── LandingPage.jsx
 │   ├── SignIn.jsx
 │   ├── SignUp.jsx
+│   ├── SignUpSimple.jsx
+│   ├── OnboardingPage.jsx
 │   ├── DashboardOverview.jsx
 │   ├── InventoryPage.jsx
 │   ├── SalesPage.jsx
 │   ├── SettingsPage.jsx
 │   └── SuperAdminPanel.jsx
 ├── context/
-│   ├── AuthContext.jsx (TODO)
-│   ├── ShopContext.jsx (TODO)
-│   └── NotificationContext.jsx (TODO)
+│   └── AuthContext.jsx ✅
 ├── hooks/
-│   └── useSocket.js ✅
+│   ├── useSocket.js ✅
+│   ├── useDashboardQuery.js ✅
+│   └── useDashboardSocket.js ✅
 ├── services/
-│   └── api.js ✅ (Complete API layer)
+│   ├── api.js ✅ (Axios with Clerk token interceptor)
+│   └── clerkApi.js ✅ (Clerk SDK helpers)
+├── components/
+│   ├── common/
+│   │   └── Toast.jsx
+│   ├── Badge.jsx
+│   ├── Button.jsx
+│   ├── Cards.jsx
+│   ├── ClerkProvider.jsx
+│   ├── DashboardLayout.jsx
+│   ├── Drawer.jsx
+│   ├── Form.jsx
+│   ├── MobileNav.jsx
+│   ├── Modal.jsx
+│   ├── Navigation.jsx
+│   ├── Sidebar.jsx
+│   ├── Skeleton.jsx
+│   ├── Switch.jsx
+│   └── TopBar.jsx
 ├── utils/
 │   ├── formatters.js ✅
 │   ├── validators.js ✅
@@ -207,13 +243,18 @@ server/
 │   ├── Expense.js ✅
 │   └── Notification.js ✅
 ├── controllers/
-│   └── authController.js ✅
+│   ├── authController.js ✅
+│   ├── dashboardController.js ✅ (MongoDB aggregation pipeline)
+│   └── clerkWebhookController.js ✅
 ├── routes/
 │   ├── auth.js ✅
 │   ├── products.js ✅
-│   └── sales.js ✅
+│   ├── sales.js ✅
+│   ├── clerk.js ✅
+│   └── dashboard.js ✅
 ├── middleware/
-│   └── auth.js ✅
+│   ├── auth.js ✅
+│   └── clerkAuth.js ✅ (Clerk JWT verification)
 ├── services/
 │   └── cronService.js ✅ (Initializes all 6 cron jobs)
 ├── jobs/
@@ -320,10 +361,16 @@ npm start
 ## 📋 API ENDPOINTS
 
 ### Auth
-- `POST /api/auth/register` - Create account + shop
-- `POST /api/auth/login` - Authenticate
-- `GET /api/auth/me` - Get current user
-- `POST /api/auth/logout` - Logout
+- `POST /api/auth/register` — Create account + shop
+- `POST /api/auth/login` — Authenticate
+- `GET /api/auth/me` — Get current user
+- `POST /api/auth/logout` — Logout
+
+### Dashboard
+- `GET /api/dashboard` — Aggregated dashboard data (stats, chart, transactions, alerts, workers)
+
+### Clerk Webhooks
+- `POST /api/clerk/webhook` — Clerk user.created / user.updated / user.deleted events
 
 ### Products
 - `GET /api/products` - List with filters
@@ -359,23 +406,23 @@ npm start
 
 ### ✅ Fully Functional
 1. **Landing Page** - Complete with all sections
-2. **Authentication UI** - Login & Signup (multi-step)
-3. **Dashboard** - Stat cards, charts, worker performance
-4. **Inventory Page** - Grid/List views, filters, search
-5. **Sales Page** - Transaction history, charts
-6. **Settings Page** - 5 tabs (Shop, Categories, Billing, Multi-Branch, Data)
-7. **Super Admin Panel** - Metrics, shops table, announcements
-8. **Backend Server** - Express + MongoDB + Socket.io
-9. **6 Cron Jobs** - All scheduled and ready
-10. **Real-Time Infrastructure** - Socket.io setup complete
-11. **API Service Layer** - Complete with interceptors
-12. **Utility Functions** - Formatters, validators, constants
+2. **Authentication UI** - Login & Signup (multi-step) with Clerk
+3. **Onboarding Flow** - 2-step: business type + shop name
+4. **Dashboard** - React Query + Socket.io + 4 states (skeleton/empty/data/error)
+5. **Inventory Page** - Grid/List views, filters, search
+6. **Sales Page** - Transaction history, charts
+7. **Settings Page** - 5 tabs (Shop, Categories, Billing, Multi-Branch, Data)
+8. **Super Admin Panel** - Metrics, shops table, announcements
+9. **Backend Server** - Express + MongoDB + Socket.io + Clerk auth
+10. **6 Cron Jobs** - All scheduled and ready
+11. **Real-Time Infrastructure** - Socket.io + React Query invalidation
+12. **API Service Layer** - Axios with Clerk token interceptor
+13. **Utility Functions** - Formatters, validators, constants
 
 ### 🔧 TODO (Optional Enhancements)
-- Implement full CRUD backend controllers
+- Implement full CRUD backend controllers for products/sales
 - Add M-Pesa Daraja API integration
-- Create React Context providers (Auth, Shop, Notification)
-- Add more custom hooks (useAuth, useProducts, etc.)
+- Create more React Context providers (Shop, Notification)
 - Implement file upload for product images
 - Add email templates (HTML files)
 - Create unit tests
@@ -465,7 +512,8 @@ req.user.shop // Current shop ID
 ## 📞 SUPPORT & DOCUMENTATION
 
 - **Quick Start Guide:** `QUICKSTART.md`
-- **Implementation Status:** `IMPLEMENTATION_STATUS.md`
+- **Implementation Spec:** `DASHBOARD_LOADING_REALTIME_ACCESSIBILITY.md` ✅ UPDATED
+- **Implementation Status:** `IMPLEMENTATION_STATUS.md` ✅ UPDATED
 - **Deployment Guide:** `DEPLOYMENT.md`
 - **Final Summary:** `FINAL_SUMMARY.md`
 

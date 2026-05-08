@@ -34,38 +34,38 @@
 - Clean, celebratory design
 
 ### 3. ✅ Dashboard (`/dashboard`)
-**Row 1: Stat Cards (4 cards)**
-- Today's Sales with trend ↑8%
-- Today's Profit with accent border
-- Low Stock Items with alert
-- Active Workers with online status
+**Data Fetching:** React Query (`useDashboardQuery`) + Clerk auth token
+**States:** Skeleton loading → Empty welcome (no data) → Live data → Error with retry
+**Socket.io:** Real-time updates via `useDashboardSocket` (invalidates query cache)
 
-**Row 2: Sales & Profit Chart**
-- Dual visualization (bars + line)
+**Row 1: Stat Cards (4 cards)**
+- Today's Sales with trend ↑/↓/— (KSh, 28px value)
+- Today's Profit with accent border & (#FDF2EC) background
+- Low Stock Items (warning/success, clickable → inventory filter)
+- Active Workers with overlapping avatar circles & online count
+
+**Row 2: Sales & Profit Combo Chart**
+- ComposedChart: Bars (sales, #312E81) + Line (profit, #E8835C)
 - Time range tabs: 7D, 30D, 3M
-- Hover tooltips with exact figures
-- Recharts implementation
+- Hover tooltips with exact values (white card, shadow-lg)
+- Empty state: BarChart3 icon placeholder
 
 **Row 3: Two Columns**
-- Left: Today's Transactions (5 items)
-  - Time, Product, Qty, Amount, Worker
-  - "View All" link
+- Left: Recent Transactions (5 items)
+  - Payment icons: Cash (green), M-Pesa (blue), Credit (orange)
+  - "View All →" link
+  - Empty: ShoppingCart + "No sales recorded today"
 - Right: Alerts & Warnings
-  - Low stock alerts
-  - Out of stock alerts
-  - Restock action buttons
+  - "Mark All Read" action
+  - Low stock / Expiry / System alerts with action buttons
+  - Empty: CheckCircle + "All clear! ✓"
 
 **Row 4: Worker Performance**
-- "Who Sold What Today"
-- Worker avatars with initials
-- Online status indicators (green dots)
-- Items sold & total sales
-- Horizontal layout
+- Horizontal scroll of worker cards with avatars
+- Progress bars relative to top performer
+- Empty: "You haven't added workers yet. Invite your staff →"
 
-**Bonus: Payment Methods Pie Chart**
-- M-Pesa, Cash, Credit distribution
-- Color-coded legend
-- Interactive tooltips
+**FAB:** 48×48px, rounded-[14px], ShoppingCart icon, fixed position
 
 ### 4. ✅ Inventory Page (`/dashboard/inventory`)
 - Grid/List view toggle
@@ -177,23 +177,26 @@ All sections complete:
 
 ### ✅ Complete
 - Express.js server setup
-- MongoDB models (User, Shop, Product, Sale)
+- MongoDB models (User, Shop, Product, Sale, Expense, Notification)
+- Clerk authentication middleware (`clerkAuth`)
+- Clerk webhook controller (user.created, user.updated, user.deleted)
 - JWT authentication with cookies
 - Password hashing (bcrypt)
-- Protected routes middleware
+- Protected routes
 - Auth controllers (register, login, logout, getMe)
-- Socket.io for real-time
+- Dashboard controller (MongoDB aggregation pipeline)
+- Socket.io real-time infrastructure
 - CORS configuration
 - Environment variables
 
 ### 🚧 To Extend
-- Product CRUD endpoints
-- Sales creation & tracking
+- Product CRUD endpoints (routes exist, controllers need expansion)
+- Sales creation & tracking (routes exist, controllers need expansion)
 - Worker management APIs
 - Report generation
 - File upload (Multer)
 - Email notifications (Nodemailer)
-- Scheduled jobs (node-cron)
+- Scheduled jobs (node-cron) — 6 jobs already created
 
 ---
 
@@ -201,25 +204,27 @@ All sections complete:
 
 ### ✅ Fully Functional
 1. Beautiful landing page with all sections
-2. Professional login page
-3. Multi-step signup with onboarding
-4. Dashboard with real charts & data
+2. Professional login page with Clerk authentication
+3. Multi-step signup with onboarding (Clerk + custom flow)
+4. Dashboard with React Query + Socket.io + 4 UI states
 5. Inventory management UI
 6. Sales tracking interface
 7. Responsive design (mobile → desktop)
 8. All navigation working
 9. Component library complete
-10. Backend authentication ready
+10. Backend with Clerk auth + dashboard aggregation
+11. 6 Cron jobs scheduled
+12. Socket.io real-time infrastructure
 
 ### 🎯 Next Steps to Complete
 1. Build POS interface (split screen)
-2. Add product drawer with full form
+2. Expand product CRUD backend controllers
 3. Create worker management pages
 4. Implement reports with all tabs
 5. Build notifications center
-6. Connect frontend to backend APIs
-7. Add M-Pesa integration
-8. Implement real-time updates
+6. Add M-Pesa Daraja API integration
+7. Implement email sending (Nodemailer)
+8. Add file upload for product images
 
 ---
 
@@ -239,12 +244,15 @@ npm run dev
 
 ## 📝 FILES CREATED
 
-**Frontend**: ~2,800 lines of production code
-**Backend**: ~600 lines of server code
-**Components**: 11 reusable components
-**Pages**: 6 complete pages
-**Models**: 4 MongoDB schemas
-**Routes**: 3 API route files
+**Frontend**: ~3,500 lines of production code
+**Backend**: ~1,200 lines of server code
+**Components**: 14 reusable components
+**Pages**: 9 complete pages
+**Hooks**: 3 custom hooks (useSocket, useDashboardQuery, useDashboardSocket)
+**Models**: 6 MongoDB schemas
+**Routes**: 5 API route files
+**Controllers**: 2 controllers (auth, dashboard)
+**Middleware**: 2 (auth, clerkAuth)
 
 ---
 
@@ -262,4 +270,4 @@ npm run dev
 
 ---
 
-**Current Status**: 60% Complete - Core functionality working, production-ready UI
+**Current Status**: 70% Complete — Core dashboard fully functional with real data, Clerk auth integrated, 6 cron jobs active

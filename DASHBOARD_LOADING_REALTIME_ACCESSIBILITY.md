@@ -1,127 +1,139 @@
-# ✅ DUKAFLOW DASHBOARD - LOADING, REAL-TIME & ACCESSIBILITY
+# ✅ DUKAFLOW DASHBOARD - IMPLEMENTATION SPEC
 
 ## 📊 Status: COMPLETE
 
-Loading states (skeleton loaders), real-time Socket.io updates, accessibility features, and micro-interactions are fully implemented.
+Full dashboard with React Query data fetching (skeleton → empty → data → error states), Socket.io real-time updates, Clerk authentication, and responsive breakpoints for mobile/tablet/desktop.
 
 ---
 
-## 🔄 LOADING STATES
+## 🏗️ ARCHITECTURE
 
-### Skeleton Loaders
+### Three Update Strategies
 
-**File:** `frontend/src/components/Skeleton.jsx`
+| Strategy | Trigger | Mechanism |
+|----------|---------|-----------|
+| **Initial Fetch** | Page load | `useDashboardQuery` → `GET /api/dashboard` |
+| **Auto-Refresh** | Every 60s (stale) | React Query `staleTime: 60_000` |
+| **Real-Time Push** | Backend events | `useDashboardSocket` invalidates query cache on Socket.io events |
 
-#### Available Components:
+### Data Flow
 
-1. **SkeletonCard** - Stat card loading
-2. **SkeletonChart** - Chart area loading
-3. **SkeletonTransaction** - Transaction row loading
-4. **SkeletonAlert** - Alert item loading
-5. **SkeletonWorkerCard** - Worker performance card loading
-6. **DashboardSkeleton** - Complete dashboard loading state
+```
+Clerk Auth (getToken)
+    ↓
+useDashboardQuery (React Query)
+    ↓
+GET /api/dashboard  →  dashboardController.js  →  MongoDB aggregations
+    ↓                                                   ↓
+Three states:                                    Returns: hasData, stats,
+  loading → skeleton                              chartData, transactions,
+  hasData: false → empty welcome                  alerts, workerPerformance
+  hasData: true → full dashboard
+  network error → error UI + retry
+    ↑
+useDashboardSocket (Socket.io)
+  invalidates query cache on:
+  sale:completed | stock:updated | worker:login | alert:new
+```
 
-#### Usage:
+---
+
+## 📁 FILES (Current Implementation)
+
+| File | Purpose |
+|------|---------|
+| `frontend/src/pages/DashboardOverview.jsx` | Main dashboard component with all 4 states |
+| `frontend/src/hooks/useDashboardQuery.js` | React Query hook → fetches + transforms data |
+| `frontend/src/hooks/useDashboardSocket.js` | Socket.io hook → invalidates query on real-time events |
+| `frontend/src/components/Skeleton.jsx` | `DashboardSkeleton` + individual skeleton components |
+| `backend/controllers/dashboardController.js` | MongoDB aggregation: stats, chart, transactions, alerts, workers |
+| `backend/routes/dashboard.js` | `GET /api/dashboard` route with `clerkAuth` middleware |
+| `backend/middleware/clerkAuth.js` | Clerk JWT verification → attaches `req.user.shop` |
+| `frontend/src/services/api.js` | Axios instance with Clerk token interceptor |
+| `frontend/src/utils/formatters.js` | `formatCurrency()` → KSh formatting |
+
+---
+
+## 🔄 DASHBOARD STATES
+
+### State 1: Loading (Skeleton)
 
 ```jsx
-import { DashboardSkeleton } from '../components/Skeleton';
-
-const DashboardOverview = () => {
-  const [loading, setLoading] = useState(true);
-
-  if (loading) {
-    return <DashboardSkeleton />;
-  }
-
-  return <div>/* Dashboard content */</div>;
-};
+if (isLoading) {
+  return <DashboardSkeleton />;
+}
 ```
 
----
+`DashboardSkeleton` renders:
+- 4 stat card skeletons (label + value + trend placeholders)
+- Chart area skeleton (h-64, rounded-xl)
+- 5 transaction row skeletons
+- 3 alert item skeletons
+- 4 worker card skeletons
+- All with `animate-pulse` CSS animation
 
-### Skeleton Specifications
+### State 2: Empty (hasData === false)
 
-**Stat Card Skeleton:**
-```
-┌──────────────────┐
-│ ████████████████ │  ← Label (h-3, w-20)
-│ ██████████       │  ← Value (h-8, w-32)
-│ ██████           │  ← Trend (h-4, w-24)
-└──────────────────┘
-```
+Shown when shop has no products/sales yet:
+- Welcome banner: "Welcome to Your Dashboard, {firstName}!"
+- Package icon (64px, neutral-300), centered welcome message
+- 4 zero stat cards: KSh 0 (neutral-400), "All good ✓" (green), "1 online ● You"
+- Empty chart placeholder with BarChart3 icon
+- Quick start guide card
 
-**Chart Skeleton:**
-```
-┌────────────────────────────────────────┐
-│ ██████████████████████████████████████ │  ← Title + subtitle
-│ ██████████████████████████████████████ │
-│ ██████████████████████████████████████ │  ← Chart area (h-64)
-└────────────────────────────────────────┘
-```
+### State 3: Data (hasData === true)
 
-**Animation:**
-```css
-animate-pulse {
-  animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+Full dashboard with real data:
+- 4 stat cards with 28px values, 13px labels, trend badges (↑/↓/—)
+- ComposedChart (Bar + Line): sales bars (#312E81, opacity 0.8) + profit line (#E8835C, strokeWidth 3)
+- Time tabs: 7D | 30D | 3M
+- Recent transactions with payment icons (Cash/M-Pesa/Card)
+- Alerts feed with "Mark All Read"
+- Worker performance cards with progress bars
+- FAB: 48×48px, rounded-[14px], ShoppingCart icon
+
+### State 4: Error (Network Failure)
+
+Shown when `fetch()` throws (offline, DNS, connection refused):
+- AlertCircle icon (48px, neutral-300)
+- "Unable to load dashboard data"
+- "Please check your connection and try again"
+- "Try Again" button → calls `refetch()`
+- **NEVER** shows raw "Failed to fetch" or "Failed to load"
+
+```jsx
+if (isError) {
+  return (
+    <div className="flex flex-col items-center justify-center min-h-[60vh]">
+      <AlertCircle size={48} className="text-neutral-300 mb-4" />
+      <h2 className="text-lg font-semibold text-neutral-900 mb-1">
+        Unable to load dashboard data
+      </h2>
+      <p className="text-sm text-neutral-500 mb-6">
+        Please check your connection and try again
+      </p>
+      <Button onClick={() => refetch()}>Try Again</Button>
+    </div>
+  );
 }
 ```
 
 ---
 
-## 🔌 REAL-TIME UPDATES
+## 🔌 SOCKET.IO REAL-TIME UPDATES
 
-### Socket.io Integration
+**File:** `frontend/src/hooks/useDashboardSocket.js`
 
-**File:** `frontend/src/hooks/useSocket.js`
+### Events
 
-#### Socket Events:
+| Event | Direction | Action |
+|-------|-----------|--------|
+| `sale:completed` | Server → Client | `queryClient.invalidateQueries(['dashboard'])` |
+| `stock:updated` | Server → Client | `queryClient.invalidateQueries(['dashboard'])` |
+| `worker:login` | Server → Client | `queryClient.invalidateQueries(['dashboard'])` |
+| `alert:new` | Server → Client | `queryClient.invalidateQueries(['dashboard'])` |
 
-| Event | Direction | What Updates |
-|-------|-----------|--------------|
-| `sale:completed` | Server → Client | Today's Sales card, Profit card, Recent Transactions, Worker cards |
-| `stock:updated` | Server → Client | Low Stock card, Alerts list |
-| `worker:login` | Server → Client | Active Workers card, Worker online status |
-| `alert:new` | Server → Client | Alerts & Warnings list, Notification bell badge |
-
-#### Usage:
-
-```jsx
-import { useSocket } from '../hooks/useSocket';
-
-const DashboardOverview = () => {
-  const shopId = 'user-shop-id';
-
-  const handleSaleCompleted = (data) => {
-    // Update stats
-    setStats(prev => ({
-      ...prev,
-      todaySales: { value: data.total, change: '+1%', trend: 'up' }
-    }));
-    
-    // Add to transactions
-    setTransactions(prev => [data.transaction, ...prev]);
-  };
-
-  const handleStockUpdated = (data) => {
-    // Update low stock count
-    setLowStockCount(data.lowStockItems);
-    
-    // Add alert
-    setAlerts(prev => [data.alert, ...prev]);
-  };
-
-  useSocket(shopId, {
-    onSaleCompleted: handleSaleCompleted,
-    onStockUpdated: handleStockUpdated,
-    onWorkerLogin: (data) => console.log('Worker logged in:', data),
-    onAlertNew: (data) => console.log('New alert:', data),
-  });
-
-  return <div>Dashboard</div>;
-};
-```
-
-#### Socket Configuration:
+### Socket Configuration
 
 ```javascript
 const socket = io(SOCKET_URL, {
@@ -135,47 +147,57 @@ const socket = io(SOCKET_URL, {
 socket.emit('join_shop', shopId);
 ```
 
----
-
 ### Backend Socket Events
 
-**File:** `backend/sockets/index.js`
+**File:** `backend/sockets/index.js` + `backend/index.js`
 
 ```javascript
 io.on('connection', (socket) => {
-  console.log('New client connected:', socket.id);
-
-  // Join shop room
   socket.on('join_shop', (shopId) => {
     socket.join(shopId);
-    console.log(`Client joined shop: ${shopId}`);
   });
 
-  // Emit sale completed
-  socket.on('sale:completed', (data) => {
-    io.to(data.shopId).emit('sale:completed', data);
-  });
-
-  // Emit stock update
-  socket.on('stock:updated', (data) => {
-    io.to(data.shopId).emit('stock:updated', data);
-  });
-
-  // Emit worker login
-  socket.on('worker:login', (data) => {
-    io.to(data.shopId).emit('worker:login', data);
-  });
-
-  // Emit new alert
-  socket.on('alert:new', (data) => {
-    io.to(data.shopId).emit('alert:new', data);
-  });
-
-  socket.on('disconnect', () => {
-    console.log('Client disconnected:', socket.id);
-  });
+  // Controllers emit events via req.app.get('io'):
+  // io.to(shopId).emit('sale:completed', data);
+  // io.to(shopId).emit('stock:updated', data);
+  // io.to(shopId).emit('worker:login', data);
+  // io.to(shopId).emit('alert:new', data);
 });
 ```
+
+---
+
+## 📐 RESPONSIVE LAYOUT
+
+### Desktop (≥1024px)
+
+| Element | Layout | Spacing |
+|---------|--------|---------|
+| Content wrapper | max-w-[1400px], mx-auto | px-6 |
+| Stat cards | grid-cols-4 | gap-4 |
+| Chart section | Full width | p-6 |
+| Transactions + Alerts | grid-cols-2 | gap-6 |
+| Worker cards | grid-cols-4 | gap-4 |
+| FAB | fixed, bottom-6, right-6 | — |
+
+### Tablet (640–1023px)
+
+| Element | Layout | Spacing |
+|---------|--------|---------|
+| Content wrapper | Full width | px-4 |
+| Stat cards | grid-cols-2 | gap-4 |
+| Transactions + Alerts | Stacked | gap-4 |
+| Worker cards | grid-cols-2 | gap-3 |
+
+### Mobile (<640px)
+
+| Element | Layout | Spacing |
+|---------|--------|---------|
+| Content wrapper | Full width | px-4 |
+| Stat cards | grid-cols-2 | gap-3 |
+| Everything else | Stacked | gap-4 |
+| FAB | fixed, bottom-20, right-4 | — |
+| Bottom nav | Fixed bottom bar | — |
 
 ---
 
@@ -184,384 +206,165 @@ io.on('connection', (socket) => {
 ### Heading Hierarchy
 
 ```
-h1 (hidden) - "Dashboard"
+h1 (sr-only) - "Dashboard"
   h2 - "Dashboard Overview"
-    h2 - "Sales & Profit Trend"
+    h2 - "Last 7 Days Performance"
     h2 - "Recent Transactions"
     h2 - "Alerts & Warnings"
     h2 - "Worker Performance Today"
 ```
 
-**Implementation:**
-```jsx
-{/* Hidden H1 for screen readers */}
-<h1 className="sr-only">Dashboard</h1>
-
-{/* Visible H2 for sections */}
-<h2 className="text-base font-semibold text-neutral-900">
-  Recent Transactions
-</h2>
-```
-
----
-
 ### Color Accessibility
 
-**Rule:** Color is NOT the only indicator
-
-✅ **Implemented:**
-- Trend indicators: Icon + text + color
-  ```jsx
-  <ArrowUpRight size={14} />  {/* Icon */}
-  <span>+12%</span>            {/* Text */}
-  <span className="text-green-700">  {/* Color */}
-  ```
-
-- Status indicators: Dot + text
-  ```jsx
-  <div className="w-2 h-2 rounded-full bg-green-500" />  {/* Dot */}
-  <span>Active</span>  {/* Text */}
-  ```
-
-- Alert types: Icon + label + color
-  ```jsx
-  <span>⚠️</span>  {/* Icon */}
-  <span className="text-orange-600">warning</span>  {/* Label + Color */}
-  ```
-
----
+✅ Color is NEVER the only indicator:
+- Trend badges: Icon + text + color (e.g., ↑ + "12%" + green)
+- Stock status: Icon color changes (orange/green) + text ("Need restock" / "All stocked ✓")
+- Worker status: Green/grey dot + text ("Online" / "Offline")
+- Alert types: Emoji icon + label + color
 
 ### Focus Order
 
-**Tab Order:**
 1. Sidebar navigation
 2. Top bar (search, notifications, user menu)
-3. Stat cards (if interactive)
-4. Chart controls
-5. Recent Transactions
-6. Alerts & Warnings
-7. Worker Performance
-8. Floating Action Button (FAB)
-
-**Implementation:**
-```jsx
-// All interactive elements are naturally focusable
-<button className="...">Action</button>
-<a href="/dashboard/sales">View All →</a>
-
-// Custom focus styles
-focus:outline-none focus:ring-2 focus:ring-[#312E81]/20 focus:border-[#312E81]
-```
-
----
-
-### Screen Reader Support
-
-**ARIA Labels:**
-```jsx
-{/* Navigation */}
-<nav aria-label="Dashboard navigation">
-  <NavLink aria-label="Go to Inventory">Inventory</NavLink>
-</nav>
-
-{/* Buttons */}
-<button aria-label="Mark all alerts as read">
-  Mark All Read
-</button>
-
-{/* Alerts */}
-<div role="alert" aria-live="polite">
-  ⚠️ Low Stock: Nike Slides - Only 2 left
-</div>
-
-{/* Charts */}
-<div role="img" aria-label="Sales and profit chart for last 7 days">
-  {/* Chart component */}
-</div>
-
-{/* FAB */}
-<button aria-label="Quick actions menu" aria-expanded={fabOpen}>
-  {fabOpen ? <X /> : <Plus />}
-</button>
-```
-
----
-
-### Keyboard Navigation
-
-**All Interactive Elements:**
-- ✅ Tab navigation works
-- ✅ Enter/Space activates buttons
-- ✅ Escape closes menus/FAB
-- ✅ Arrow keys for navigation (future enhancement)
-
-**Focusable Elements:**
-```jsx
-// Buttons
-<button onClick={...}>Action</button>
-
-// Links
-<a href="/dashboard/sales">View All</a>
-
-// Inputs
-<input type="text" />
-
-// Custom focusable
-<div tabIndex={0} role="button" onKeyDown={...}>
-  Custom Button
-</div>
-```
+3. Stat cards (clickable: Low Stock → Inventory filter)
+4. Chart controls (7D/30D/3M tabs)
+5. Transaction rows (clickable)
+6. Alert action buttons ("Restock", "Discount", "View")
+7. FAB button
+8. Mobile bottom nav
 
 ---
 
 ## ✨ MICRO-INTERACTIONS
 
-### Stat Cards
-
-**Hover Effect:**
-```css
-hover:shadow-md hover:-translate-y-0.5 transition-all duration-200
-```
-
-**Behavior:**
-- Lift: translateY(-2px)
-- Shadow: shadow-sm → shadow-md
-- Duration: 200ms
-- Easing: ease
+| Element | Hover Effect |
+|---------|-------------|
+| Stat cards | `hover:shadow-md hover:-translate-y-0.5 transition-all duration-200` |
+| Transaction rows | `hover:bg-neutral-50 transition-colors duration-200` |
+| Alert rows | `hover:bg-neutral-50 transition-colors duration-200` |
+| Worker cards | `hover:shadow-md transition-all duration-200` |
+| FAB | `hover:scale-105 transition-transform duration-200` |
+| Time tabs | `hover:text-neutral-900 transition-colors duration-150` |
+| Chart bars | `hover:opacity-80 transition-opacity duration-150` |
 
 ---
 
-### Chart Bars (Future)
+## 🎯 API CONTRACT
 
-**Hover Effect:**
-```css
-hover:opacity-80 transition-opacity duration-150
+### GET /api/dashboard
+
+**Headers:** `Authorization: Bearer <clerk_token>`
+
+**Response:**
+
+```json
+{
+  "success": true,
+  "shopId": "6621a...",
+  "shopName": "My Shop",
+  "hasData": true,
+  "todaySales": 24850,
+  "todaySalesTrend": 12,
+  "todayProfit": 8420,
+  "todayProfitTrend": 18,
+  "lowStockCount": 7,
+  "activeWorkers": 3,
+  "onlineWorkers": 2,
+  "chartData": [
+    { "day": "Mon", "sales": 18500, "profit": 6200 }
+  ],
+  "recentTransactions": [
+    {
+      "_id": "...",
+      "time": "14:30",
+      "product": "Nike Slides",
+      "quantity": 2,
+      "total": 3200,
+      "paymentMethod": "mpesa",
+      "workerName": "John"
+    }
+  ],
+  "alerts": [
+    {
+      "_id": "...",
+      "type": "low_stock",
+      "message": "Nike Slides running low",
+      "details": "Only 2 left",
+      "timeAgo": "2 hours ago"
+    }
+  ],
+  "workerPerformance": [
+    {
+      "_id": "...",
+      "name": "John",
+      "salesCount": 12,
+      "salesTotal": 14200
+    }
+  ],
+  "date": "2026-04-17"
+}
 ```
 
-**Tooltip:**
-```jsx
-<div className="absolute bg-white shadow-lg rounded-lg p-3 border border-neutral-200">
-  <p className="text-sm font-semibold">Monday</p>
-  <p className="text-xs text-neutral-600">Sales: KES 18,000</p>
-  <p className="text-xs text-neutral-600">Profit: KES 6,200</p>
-</div>
-```
-
----
-
-### Transaction Row
-
-**Hover Effect:**
-```css
-hover:bg-neutral-50 transition-colors duration-200
-```
-
----
-
-### Alert Row
-
-**Hover Effect:**
-```css
-hover:bg-neutral-50 transition-colors duration-200
-```
-
----
-
-### Floating Action Button (FAB)
-
-**Hover Effect:**
-```css
-hover:shadow-xl transition-all duration-200
-```
-
-**Scale Animation:**
-```jsx
-style={{
-  transform: fabOpen ? 'scale(1.05)' : 'scale(1)',
-  backgroundColor: fabOpen ? '#1E1B4B' : '#312E81',
-}}
-```
-
-**Speed Dial:**
-- Click FAB → Opens menu
-- Click again → Closes menu
-- Click outside → Closes menu (future)
-
----
-
-### Notification Bell
-
-**Click Action:**
-```jsx
-const [showNotifications, setShowNotifications] = useState(false);
-
-<button onClick={() => setShowNotifications(!showNotifications)}>
-  <Bell size={20} />
-  {unreadCount > 0 && (
-    <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full" />
-  )}
-</button>
-
-{showNotifications && (
-  <div className="absolute top-full right-0 mt-2 w-80 bg-white rounded-lg shadow-lg border border-neutral-200">
-    {/* Notification list */}
-  </div>
-)}
+**Empty response (hasData: false):**
+```json
+{
+  "success": true,
+  "hasData": false,
+  "todaySales": 0,
+  "todaySalesTrend": null,
+  "todayProfit": 0,
+  "todayProfitTrend": null,
+  "lowStockCount": 0,
+  "activeWorkers": 0,
+  "onlineWorkers": 0,
+  "chartData": [],
+  "recentTransactions": [],
+  "alerts": [],
+  "workerPerformance": [],
+  "date": "2026-04-17"
+}
 ```
 
 ---
 
-### Date Picker
+## 📚 Error Handling Strategy
 
-**Click Action:**
-```jsx
-const [showDatePicker, setShowDatePicker] = useState(false);
-
-<button onClick={() => setShowDatePicker(!showDatePicker)}>
-  <Calendar size={18} />
-  <span>Today, Apr 16</span>
-</button>
-
-{showDatePicker && (
-  <div className="absolute top-full mt-2 left-0 bg-white rounded-lg shadow-lg border border-neutral-200 p-4 z-50">
-    {/* Calendar component */}
-    <p className="text-sm text-neutral-600">Date picker coming soon...</p>
-  </div>
-)}
-```
+| Failure Type | Behavior |
+|-------------|----------|
+| No Clerk token | Return EMPTY_DASHBOARD (Clerk handles redirect) |
+| Network error (fetch throws) | Throw `'Unable to load dashboard data'` → error UI with retry |
+| HTTP 4xx/5xx (backend error) | Return EMPTY_DASHBOARD gracefully (no crash) |
+| Backend 400 (no shop found) | Return EMPTY_DASHBOARD (user may need onboarding) |
 
 ---
 
-## 📏 SPACING SUMMARY
+## 🚀 Refresh Intervals
 
-### Desktop Spacing
-
-| Element | Padding | Gap |
-|---------|---------|-----|
-| Content | 24px (p-6) | - |
-| Row Gap | - | 24px (gap-6) |
-| Column Gap | - | 24px (gap-6) |
-| Stat Card | 20px (p-5) | 16px (gap-4) |
-| Chart Card | 24px (p-6) | - |
-| Transaction Row | 12px 0 (py-3) | - |
-| Alert Row | 16px 0 (py-4) | - |
-| Worker Card | 16px (p-4) | 16px (gap-4) |
-
-### Mobile Spacing
-
-| Element | Padding | Gap |
-|---------|---------|-----|
-| Content | 16px (p-4) | - |
-| Row Gap | - | 16px (gap-4) |
-| Column Gap | - | 16px (gap-4) |
-| Stat Card | 20px (p-5) | 16px (gap-4) |
-| Chart Card | 16px (p-4) | - |
-| Transaction Row | 12px 0 (py-3) | - |
-| Alert Row | 16px 0 (py-4) | - |
-| Worker Row | 12px (p-3) | 12px (gap-3) |
-
----
-
-## 🎯 ACCESSIBILITY CHECKLIST
-
-- [x] Heading hierarchy (h1 → h2)
-- [x] ARIA labels on interactive elements
-- [x] Color not sole indicator (icons + text)
-- [x] Focus order logical
-- [x] Keyboard navigation works
-- [x] Screen reader friendly
-- [x] Touch targets ≥ 44px
-- [x] Contrast ratios meet WCAG AA
-- [x] Loading states announced
-- [x] Real-time updates announced (aria-live)
-
----
-
-## 🚀 IMPLEMENTATION GUIDE
-
-### Using Skeleton Loaders:
-
-```jsx
-import { DashboardSkeleton } from '../components/Skeleton';
-
-const Dashboard = () => {
-  const [loading, setLoading] = useState(true);
-  const [data, setData] = useState(null);
-
-  useEffect(() => {
-    fetchData().then((data) => {
-      setData(data);
-      setLoading(false);
-    });
-  }, []);
-
-  if (loading) {
-    return <DashboardSkeleton />;
-  }
-
-  return <DashboardContent data={data} />;
-};
-```
-
-### Using Real-Time Updates:
-
-```jsx
-import { useSocket } from '../hooks/useSocket';
-
-const Dashboard = () => {
-  const [stats, setStats] = useState(initialStats);
-  const [transactions, setTransactions] = useState([]);
-
-  const handleSaleCompleted = (data) => {
-    setStats(prev => ({
-      ...prev,
-      todaySales: { value: data.total, change: '+1%', trend: 'up' }
-    }));
-    setTransactions(prev => [data.transaction, ...prev.slice(0, 4)]);
-  };
-
-  useSocket('shop-id', {
-    onSaleCompleted: handleSaleCompleted,
-  });
-
-  return <div>Dashboard</div>;
-};
-```
-
----
-
-## 📚 Files Created
-
-1. ✅ `frontend/src/components/Skeleton.jsx` (156 lines)
-   - 6 skeleton components
-   - Complete dashboard skeleton
-   - Pulse animations
-
-2. ✅ `frontend/src/hooks/useSocket.js` (72 lines)
-   - Socket.io connection management
-   - 4 event listeners
-   - Auto-reconnection
-   - Cleanup on unmount
+| Trigger | Interval |
+|---------|----------|
+| React Query stale time | 60 seconds |
+| Socket.io (sale:completed) | Instant |
+| Socket.io (stock:updated) | Instant |
+| Socket.io (worker:login) | Instant |
+| Socket.io (alert:new) | Instant |
+| Auto-refetch on window focus | Enabled |
 
 ---
 
 ## 🎉 Summary
 
-**Dashboard now includes:**
-- ✅ Skeleton loaders for all sections
-- ✅ Real-time Socket.io updates
-- ✅ Accessible heading hierarchy
-- ✅ ARIA labels throughout
-- ✅ Keyboard navigation support
-- ✅ Screen reader compatibility
-- ✅ Micro-interactions (hover, click, focus)
-- ✅ Color + icon + text indicators
-- ✅ Logical focus order
-- ✅ Touch-friendly targets
-
-**Your dashboard is production-ready with excellent UX!** 🚀
+**Dashboard is production-ready with:**
+- ✅ 4 distinct UI states (skeleton → empty → data → error)
+- ✅ React Query fetching with 60s stale time
+- ✅ Socket.io real-time updates (invalidates query cache)
+- ✅ Clerk authentication (token → backend → shop context)
+- ✅ MongoDB aggregation pipeline for performance
+- ✅ Responsive design (mobile, tablet, desktop)
+- ✅ Accessible (ARIA, keyboard, color contrast)
+- ✅ Micro-interactions (hover, transitions, focus styles)
+- ✅ Error handling with retry (never shows raw errors)
 
 ---
 
-**Last Updated:** April 16, 2026  
-**Status:** ✅ Complete & Accessible
+**Last Updated:** April 17, 2026
+**Status:** ✅ Complete
