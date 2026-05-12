@@ -1,7 +1,8 @@
 import React, { useState, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   Plus, Search, Filter, Grid, List, Package,
-  AlertCircle, X, ChevronDown, Camera,
+  AlertCircle, X, ChevronDown, PackagePlus, Scan,
 } from 'lucide-react';
 import { useInventoryQuery } from '../hooks/useInventoryQuery';
 import { formatCurrency } from '../utils/formatters';
@@ -23,6 +24,8 @@ const getStockBadge = (status) => {
 };
 
 const InventoryPage = () => {
+  const navigate = useNavigate();
+
   // --- State ---
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('all');
@@ -78,14 +81,11 @@ const InventoryPage = () => {
 
           {/* Filter bar skeleton */}
           <div className="bg-white rounded-2xl border border-neutral-200 p-4 space-y-3 animate-pulse">
-            <div className="flex gap-3">
-              <div className="flex-1 h-10 bg-neutral-200 rounded-lg" />
-              <div className="h-10 w-24 bg-neutral-200 rounded-lg" />
-              <div className="h-10 w-24 bg-neutral-200 rounded-lg" />
-              <div className="h-10 w-20 bg-neutral-200 rounded-lg" />
-            </div>
+            {/* Search skeleton */}
+            <div className="h-11 bg-neutral-200 rounded-xl w-full md:w-80" />
+            {/* 6 pill skeletons */}
             <div className="flex gap-2">
-              {[1, 2, 3, 4].map((i) => (
+              {[1, 2, 3, 4, 5, 6].map((i) => (
                 <div key={i} className="h-9 w-20 bg-neutral-200 rounded-full" />
               ))}
             </div>
@@ -151,61 +151,95 @@ const InventoryPage = () => {
   if (!hasData) {
     return (
       <div className="w-full max-w-full overflow-hidden">
-        <div className="space-y-6 px-4 md:px-0">
+        <div className="space-y-6">
           {/* Header */}
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-            <div>
-              <h1 className="text-2xl font-bold text-[#1E293B]">Inventory</h1>
-              <p className="text-sm text-[#64748B] mt-1">Manage your products and stock levels.</p>
-            </div>
-            <button className="flex items-center gap-2 px-4 py-2.5 bg-[#312E81] text-white rounded-xl hover:bg-[#1E1B4B] transition-colors text-sm font-medium whitespace-nowrap">
-              <Plus size={18} />
+          <div className="flex items-center justify-between">
+            <h1 className="text-2xl font-bold text-neutral-900">Inventory</h1>
+            <button
+              onClick={() => navigate('/inventory/add')}
+              className="flex items-center gap-2 px-5 py-2.5 bg-[#312E81] text-white rounded-xl hover:bg-[#1E1B4B] transition-colors text-sm font-semibold whitespace-nowrap"
+            >
+              <PackagePlus size={18} />
               <span>Add Product</span>
             </button>
           </div>
 
-          {/* Empty card */}
-          <div className="flex flex-col items-center justify-center py-20 bg-white rounded-2xl border border-[#CBD5E1]">
-            <div className="w-20 h-20 rounded-full bg-neutral-50 flex items-center justify-center mb-5">
-              <Package size={40} className="text-neutral-300" />
+          {/* Filter bar (simplified) */}
+          <div className="bg-white rounded-2xl border border-neutral-200 py-4">
+            <div className="px-4">
+              {/* Search */}
+              <div className="relative w-full md:w-80">
+                <Search size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400" />
+                <input
+                  type="text"
+                  placeholder="Search products..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="w-full h-11 pl-10 pr-4 border border-neutral-300 rounded-xl text-sm placeholder-neutral-400 focus:ring-2 focus:ring-[#312E81]/20 focus:border-[#312E81] outline-none"
+                />
+              </div>
             </div>
-            <h3 className="text-xl font-semibold text-[#1E293B] mb-2">
-              Your inventory is empty
-            </h3>
-            <p className="text-sm text-[#64748B] mb-8 text-center max-w-sm px-4">
-              Add your first product to start tracking stock and sales in real time.
-            </p>
-            <div className="flex flex-col sm:flex-row gap-3">
-              <button className="flex items-center gap-2 px-6 py-3 bg-[#312E81] text-white rounded-xl hover:bg-[#1E1B4B] transition-colors">
-                <Plus size={18} />
-                <span className="font-medium">Add Your First Product</span>
+
+            {/* Category pills with 0 count */}
+            <div className="flex gap-2 overflow-x-auto px-4 mt-3 scrollbar-none">
+              <button
+                onClick={() => setSelectedCategory('all')}
+                className="sm:px-4 sm:py-2 sm:text-sm px-3 py-1.5 text-[13px] rounded-full font-medium bg-[#312E81] text-white transition-all duration-150 cursor-pointer whitespace-nowrap"
+              >
+                All (0)
               </button>
-              <button className="flex items-center gap-2 px-6 py-3 border border-[#CBD5E1] text-[#64748B] rounded-xl hover:bg-neutral-50 transition-colors">
-                <Camera size={18} />
-                <span className="font-medium">Scan Barcode</span>
-              </button>
+              {categories.map((cat) => (
+                <button
+                  key={cat}
+                  onClick={() => setSelectedCategory(cat)}
+                  className="sm:px-4 sm:py-2 sm:text-sm px-3 py-1.5 text-[13px] rounded-full font-medium bg-white border border-neutral-300 text-neutral-700 hover:border-[#312E81] hover:bg-[#EEF2FF] transition-all duration-150 cursor-pointer whitespace-nowrap"
+                >
+                  {cat} (0)
+                </button>
+              ))}
             </div>
-            <p className="text-xs text-neutral-400 mt-4">
-              Barcode scanning coming soon
-            </p>
           </div>
 
-          {/* Quick tips */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            {[
-              { title: 'Add manually', desc: 'Enter product details, price, and stock level' },
-              { title: 'Bulk import', desc: 'Upload CSV with multiple products at once' },
-              { title: 'Scan barcode', desc: 'Use your camera to scan and auto-fill details' },
-            ].map((tip, i) => (
-              <div key={i} className="bg-white rounded-2xl border border-[#CBD5E1] p-5">
-                <div className="w-8 h-8 rounded-lg bg-[#EEF2FF] flex items-center justify-center mb-3">
-                  <span className="text-sm font-bold text-[#312E81]">{i + 1}</span>
-                </div>
-                <h4 className="text-sm font-semibold text-[#1E293B] mb-1">{tip.title}</h4>
-                <p className="text-xs text-[#64748B]">{tip.desc}</p>
-              </div>
-            ))}
+          {/* Empty card */}
+          <div className="flex flex-col items-center justify-center py-16 md:py-20 sm:max-w-[450px] sm:mx-auto bg-white rounded-2xl border border-neutral-200">
+            <Package size={56} className="text-neutral-200 sm:hidden" />
+            <Package size={64} className="text-neutral-200 hidden sm:block lg:hidden" />
+            <Package size={80} className="text-neutral-200 hidden lg:block" />
+            <h3 className="lg:text-[22px] sm:text-xl text-lg font-bold text-neutral-900 mt-6">
+              Your inventory is empty
+            </h3>
+            <p className="lg:text-[15px] text-sm text-neutral-500 mt-2 text-center max-w-[400px] px-4">
+              Add your first product to start tracking stock levels, sales, and profits.
+            </p>
+            <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 mt-7 w-full sm:w-auto px-4 sm:px-0">
+              <button
+                onClick={() => navigate('/inventory/add')}
+                className="flex items-center justify-center gap-2 h-12 px-6 bg-[#312E81] text-white rounded-xl hover:bg-[#1E1B4B] transition-colors font-medium text-sm sm:w-auto w-full"
+              >
+                <PackagePlus size={18} />
+                <span>Add Your First Product</span>
+              </button>
+              <button
+                onClick={() => navigate('/inventory/add?scan=true')}
+                className="flex items-center justify-center gap-2 h-12 px-6 border border-neutral-300 text-neutral-700 rounded-xl hover:bg-neutral-50 transition-colors font-medium text-sm sm:w-auto w-full"
+              >
+                <Scan size={18} />
+                <span>Scan Barcode</span>
+              </button>
+            </div>
+            <a href="#" className="text-sm text-[#312E81] hover:underline mt-5 font-medium">
+              Need help? View our inventory guide →
+            </a>
           </div>
+
+          {/* FAB */}
+          <button
+            onClick={() => navigate('/inventory/add')}
+            className="fixed md:bottom-6 md:right-6 bottom-20 right-4 w-14 h-14 rounded-2xl bg-[#312E81] text-white shadow-lg hover:bg-[#1E1B4B] hover:scale-105 hover:shadow-xl transition-all duration-200 flex items-center justify-center z-40"
+            aria-label="Add product"
+          >
+            <Plus size={24} />
+          </button>
         </div>
       </div>
     );
@@ -217,35 +251,37 @@ const InventoryPage = () => {
   if (hasActiveFilters && products.length === 0) {
     return (
       <div className="w-full max-w-full overflow-hidden">
-        <div className="space-y-6 px-4 md:px-0">
+        <div className="space-y-6">
           {/* Header */}
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-            <div>
-              <h1 className="text-2xl font-bold text-[#1E293B]">Inventory</h1>
-              <p className="text-sm text-[#64748B] mt-1">Manage your products and stock levels.</p>
-            </div>
-            <button className="flex items-center gap-2 px-4 py-2.5 bg-[#312E81] text-white rounded-xl hover:bg-[#1E1B4B] transition-colors text-sm font-medium whitespace-nowrap">
-              <Plus size={18} />
+          <div className="flex items-center justify-between">
+            <h1 className="text-2xl font-bold text-neutral-900">Inventory</h1>
+            <button
+              onClick={() => navigate('/inventory/add')}
+              className="flex items-center gap-2 px-5 py-2.5 bg-[#312E81] text-white rounded-xl hover:bg-[#1E1B4B] transition-colors text-sm font-semibold whitespace-nowrap"
+            >
+              <PackagePlus size={18} />
               <span>Add Product</span>
             </button>
           </div>
 
           {/* Filter bar (simplified) */}
-          <div className="bg-white rounded-2xl border border-[#CBD5E1] p-4">
-            <div className="relative">
-              <Search size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400" />
-              <input
-                type="text"
-                placeholder="Search products by name, SKU, brand..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full pl-10 pr-4 py-2.5 border border-[#CBD5E1] rounded-xl text-sm focus:ring-2 focus:ring-[#312E81]/20 focus:border-[#312E81] outline-none"
-              />
+          <div className="bg-white rounded-2xl border border-neutral-200 py-4">
+            <div className="px-4">
+              <div className="relative w-full md:w-80">
+                <Search size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400" />
+                <input
+                  type="text"
+                  placeholder="Search products..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="w-full h-11 pl-10 pr-4 border border-neutral-300 rounded-xl text-sm placeholder-neutral-400 focus:ring-2 focus:ring-[#312E81]/20 focus:border-[#312E81] outline-none"
+                />
+              </div>
             </div>
           </div>
 
           {/* No results */}
-          <div className="flex flex-col items-center justify-center py-20 bg-white rounded-2xl border border-[#CBD5E1]">
+          <div className="flex flex-col items-center justify-center py-20 bg-white rounded-2xl border border-neutral-200">
             <Search size={48} className="text-neutral-300 mb-4" />
             <h3 className="text-lg font-semibold text-[#1E293B] mb-2">
               No products match your criteria
@@ -261,6 +297,15 @@ const InventoryPage = () => {
               <span>Clear Filters</span>
             </button>
           </div>
+
+          {/* FAB */}
+          <button
+            onClick={() => navigate('/inventory/add')}
+            className="fixed md:bottom-6 md:right-6 bottom-20 right-4 w-14 h-14 rounded-2xl bg-[#312E81] text-white shadow-lg hover:bg-[#1E1B4B] hover:scale-105 hover:shadow-xl transition-all duration-200 flex items-center justify-center z-40"
+            aria-label="Add product"
+          >
+            <Plus size={24} />
+          </button>
         </div>
       </div>
     );
@@ -271,42 +316,46 @@ const InventoryPage = () => {
   // ========================
   return (
     <div className="w-full max-w-full overflow-hidden">
-      <div className="space-y-6 px-4 md:px-0">
+      <div className="space-y-6">
         {/* Page Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-bold text-[#1E293B]">Inventory</h1>
-            <p className="text-sm text-[#64748B] mt-1">
+            <h1 className="text-2xl font-bold text-neutral-900">Inventory</h1>
+            <p className="text-sm text-neutral-500 mt-1">
               {data?.total || 0} product{(data?.total || 0) !== 1 ? 's' : ''} across {categories.length} categor{categories.length !== 1 ? 'ies' : 'y'}
             </p>
           </div>
           <div className="flex gap-2">
             <button
-              className="flex items-center gap-2 px-4 py-2.5 border border-[#CBD5E1] text-[#64748B] rounded-xl hover:bg-neutral-50 transition-colors text-sm font-medium whitespace-nowrap"
-              title="Scan barcode (Coming soon)"
+              onClick={() => navigate('/inventory/add?scan=true')}
+              className="flex items-center gap-2 px-4 py-2.5 border border-neutral-300 text-neutral-700 rounded-xl hover:bg-neutral-50 transition-colors text-sm font-medium whitespace-nowrap"
+              title="Scan barcode"
             >
-              <Camera size={18} />
+              <Scan size={18} />
               <span className="hidden sm:inline">Scan</span>
             </button>
-            <button className="flex items-center gap-2 px-4 py-2.5 bg-[#312E81] text-white rounded-xl hover:bg-[#1E1B4B] transition-colors text-sm font-medium whitespace-nowrap">
-              <Plus size={18} />
+            <button
+              onClick={() => navigate('/inventory/add')}
+              className="flex items-center gap-2 px-5 py-2.5 bg-[#312E81] text-white rounded-xl hover:bg-[#1E1B4B] transition-colors text-sm font-semibold whitespace-nowrap"
+            >
+              <PackagePlus size={18} />
               <span>Add Product</span>
             </button>
           </div>
         </div>
 
         {/* Filter Bar */}
-        <div className="bg-white rounded-2xl border border-[#CBD5E1] p-4 space-y-4">
+        <div className="bg-white rounded-2xl border border-neutral-200 py-4">
           {/* Search + Controls row */}
-          <div className="flex flex-col sm:flex-row gap-3">
-            <div className="flex-1 relative">
+          <div className="flex flex-col sm:flex-row gap-3 px-4">
+            <div className="relative w-full md:w-80">
               <Search size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400" />
               <input
                 type="text"
-                placeholder="Search products by name, SKU, brand..."
+                placeholder="Search products..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full pl-10 pr-4 py-2.5 border border-[#CBD5E1] rounded-xl text-sm focus:ring-2 focus:ring-[#312E81]/20 focus:border-[#312E81] outline-none"
+                className="w-full h-11 pl-10 pr-4 border border-neutral-300 rounded-xl text-sm placeholder-neutral-400 focus:ring-2 focus:ring-[#312E81]/20 focus:border-[#312E81] outline-none"
               />
             </div>
             <div className="flex gap-2">
@@ -371,13 +420,13 @@ const InventoryPage = () => {
           </div>
 
           {/* Category pills */}
-          <div className="flex gap-2 overflow-x-auto pb-1 -mx-1 px-1 scrollbar-none">
+          <div className="flex gap-2 overflow-x-auto px-4 mt-3 scrollbar-none">
             <button
               onClick={() => setSelectedCategory('all')}
-              className={`px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-colors ${
+              className={`sm:px-4 sm:py-2 sm:text-sm px-3 py-1.5 text-[13px] rounded-full font-medium whitespace-nowrap transition-all duration-150 ${
                 selectedCategory === 'all'
                   ? 'bg-[#312E81] text-white'
-                  : 'bg-neutral-100 text-[#64748B] hover:bg-neutral-200'
+                  : 'bg-white border border-neutral-300 text-neutral-700 hover:border-[#312E81] hover:bg-[#EEF2FF]'
               }`}
             >
               All
@@ -386,10 +435,10 @@ const InventoryPage = () => {
               <button
                 key={cat}
                 onClick={() => setSelectedCategory(cat)}
-                className={`px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-colors ${
+                className={`sm:px-4 sm:py-2 sm:text-sm px-3 py-1.5 text-[13px] rounded-full font-medium whitespace-nowrap transition-all duration-150 ${
                   selectedCategory === cat
                     ? 'bg-[#312E81] text-white'
-                    : 'bg-neutral-100 text-[#64748B] hover:bg-neutral-200'
+                    : 'bg-white border border-neutral-300 text-neutral-700 hover:border-[#312E81] hover:bg-[#EEF2FF]'
                 }`}
               >
                 {cat}
@@ -465,6 +514,7 @@ const InventoryPage = () => {
               return (
                 <div
                   key={product._id}
+                  onClick={() => navigate(`/inventory/${product._id}`)}
                   className="bg-white rounded-2xl border border-[#CBD5E1] overflow-hidden hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 cursor-pointer group"
                 >
                   {/* Image */}
@@ -557,7 +607,7 @@ const InventoryPage = () => {
                   {products.map((product) => {
                     const badge = getStockBadge(product.status);
                     return (
-                      <tr key={product._id} className="border-t border-neutral-100 hover:bg-neutral-50 transition-colors">
+                      <tr key={product._id} onClick={() => navigate(`/inventory/${product._id}`)} className="border-t border-neutral-100 hover:bg-neutral-50 transition-colors cursor-pointer">
                         <td className="py-3 px-4">
                           <span className="text-sm font-medium text-[#1E293B]">{product.name}</span>
                         </td>
@@ -594,9 +644,13 @@ const InventoryPage = () => {
           </div>
         )}
 
-        {/* FAB - Mobile only */}
-        <button className="fixed bottom-20 right-4 sm:hidden w-12 h-12 rounded-[14px] bg-[#312E81] text-white shadow-lg hover:bg-[#1E1B4B] hover:scale-105 transition-all duration-200 flex items-center justify-center z-40" aria-label="Add product">
-          <Plus size={22} />
+        {/* FAB */}
+        <button
+          onClick={() => navigate('/inventory/add')}
+          className="fixed md:bottom-6 md:right-6 bottom-20 right-4 w-14 h-14 rounded-2xl bg-[#312E81] text-white shadow-lg hover:bg-[#1E1B4B] hover:scale-105 hover:shadow-xl transition-all duration-200 flex items-center justify-center z-40"
+          aria-label="Add product"
+        >
+          <Plus size={24} />
         </button>
       </div>
     </div>
