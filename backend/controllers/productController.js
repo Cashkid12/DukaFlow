@@ -55,11 +55,12 @@ exports.getProducts = async (req, res) => {
       query.category = category;
     }
 
+    // Fetch shop settings once for threshold
+    const shop = await Shop.findById(shopId).lean();
+    const threshold = shop?.settings?.lowStockThreshold || 10;
+
     // Filter by stock status
     if (stockStatus) {
-      const shop = await Shop.findById(shopId);
-      const threshold = shop?.settings?.lowStockThreshold || 10;
-
       switch (stockStatus) {
         case 'in_stock':
           query.stock = { $gt: threshold };
@@ -128,26 +129,40 @@ exports.getProducts = async (req, res) => {
     // Get unique categories for filter
     const categories = await Product.distinct('category', { shop: shopId, isActive: true });
 
-    // Get shop settings for business type
-    const shop = await Shop.findById(shopId).lean();
+    // Get distinct filter values from all active products
+    const distinctFilters = await Product.aggregate([
+      { $match: { shop: shopId, isActive: true } },
+      {
+        $group: {
+          _id: null,
+          sizes: { $addToSet: '$attributes.size' },
+          colors: { $addToSet: '$attributes.color' },
+          brands: { $addToSet: '$attributes.brand' },
+        },
+      },
+    ]);
+
+    const filters = (distinctFilters[0]) ? {
+      sizes: distinctFilters[0].sizes.filter(Boolean),
+      colors: distinctFilters[0].colors.filter(Boolean),
+      brands: distinctFilters[0].brands.filter(Boolean),
+    } : { sizes: [], colors: [], brands: [] };
+
+    // Add computed status to each product
+    const productsWithStatus = products.map((p) => ({
+      ...p,
+      status: p.stock <= 0 ? 'out_of_stock' : p.stock <= threshold ? 'low_stock' : 'in_stock',
+    }));
 
     console.log(`✅ Found ${products.length} products (total: ${total})`);
 
     res.status(200).json({
       success: true,
       data: {
-        products,
-        pagination: {
-          current: parseInt(page),
-          pages: Math.ceil(total / parseInt(limit)),
-          total,
-          hasMore: skip + products.length < total,
-        },
+        products: productsWithStatus,
+        total,
         categories,
-        shop: {
-          businessType: shop?.businessType,
-          settings: shop?.settings,
-        },
+        filters,
       },
     });
   } catch (error) {
