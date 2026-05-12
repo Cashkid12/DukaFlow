@@ -112,6 +112,14 @@ exports.getProducts = async (req, res) => {
     // Handle special case for expiry date sorting
     if (sortBy === 'expiry') {
       sortOptions['attributes.expiryDate'] = sortOrder === 'desc' ? -1 : 1;
+    } else if (sortBy === 'name') {
+      sortOptions['name'] = sortOrder === 'desc' ? -1 : 1;
+    } else if (sortBy === 'stock') {
+      sortOptions['stock'] = sortOrder === 'desc' ? -1 : 1;
+    } else if (sortBy === 'price') {
+      sortOptions['price'] = sortOrder === 'desc' ? -1 : 1;
+    } else if (sortBy === 'costPrice') {
+      sortOptions['costPrice'] = sortOrder === 'desc' ? -1 : 1;
     } else {
       sortOptions[sortBy] = sortOrder === 'desc' ? -1 : 1;
     }
@@ -156,11 +164,17 @@ exports.getProducts = async (req, res) => {
 
     console.log(`✅ Found ${products.length} products (total: ${total})`);
 
+    const totalPages = Math.ceil(total / parseInt(limit));
+    const currentPage = parseInt(page);
+
     res.status(200).json({
       success: true,
       data: {
         products: productsWithStatus,
         total,
+        page: currentPage,
+        totalPages,
+        hasMore: currentPage < totalPages,
         categories,
         filters,
       },

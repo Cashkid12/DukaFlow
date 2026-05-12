@@ -79,6 +79,9 @@ export const useInventoryQuery = (filters = {}) => {
         hasData: result.data.total > 0,
         products: result.data.products || [],
         total: result.data.total || 0,
+        page: result.data.page || 1,
+        totalPages: result.data.totalPages || 1,
+        hasMore: result.data.hasMore ?? false,
         categories: result.data.categories?.length
           ? result.data.categories
           : EMPTY_INVENTORY.categories,

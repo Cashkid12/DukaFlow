@@ -1,11 +1,17 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Plus, Search, Filter, Grid, List, Package,
   AlertCircle, X, ChevronDown, PackagePlus, Scan,
+  Loader2,
 } from 'lucide-react';
 import { useInventoryQuery } from '../hooks/useInventoryQuery';
+import { useInventorySocket } from '../hooks/useInventorySocket';
+import { useDebounce } from '../hooks/useDebounce';
 import { formatCurrency } from '../utils/formatters';
+import ProductCard from '../components/inventory/ProductCard';
+import RestockModal from '../components/inventory/RestockModal';
+import DeleteConfirmModal from '../components/inventory/DeleteConfirmModal';
 
 /**
  * Returns a stock status badge config for a product.
@@ -28,27 +34,42 @@ const InventoryPage = () => {
 
   // --- State ---
   const [searchTerm, setSearchTerm] = useState('');
+  const debouncedSearch = useDebounce(searchTerm, 300);
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [selectedStockStatus, setSelectedStockStatus] = useState('all');
   const [viewMode, setViewMode] = useState('grid');
   const [showFilters, setShowFilters] = useState(false);
   const [sortBy, setSortBy] = useState('createdAt');
   const [sortOrder, setSortOrder] = useState('desc');
+  const [page, setPage] = useState(1);
+  const [restockProduct, setRestockProduct] = useState(null);
+  const [deleteProduct, setDeleteProduct] = useState(null);
+  const [attrFilters, setAttrFilters] = useState({ size: '', color: '', brand: '' });
+  const loadMoreRef = useRef(null);
 
   // --- Data ---
   const filters = useMemo(() => ({
-    search: searchTerm,
+    search: debouncedSearch,
     category: selectedCategory,
     stockStatus: selectedStockStatus,
     sortBy,
     sortOrder,
-  }), [searchTerm, selectedCategory, selectedStockStatus, sortBy, sortOrder]);
+    page,
+    ...attrFilters,
+  }), [debouncedSearch, selectedCategory, selectedStockStatus, sortBy, sortOrder, page, attrFilters]);
 
   const { data, isLoading, isError, error, refetch } = useInventoryQuery(filters);
+
+  // Socket.io real-time updates
+  useInventorySocket(data?.shopId);
 
   const products = data?.products || [];
   const categories = data?.categories || [];
   const hasData = data?.hasData || false;
+  const totalPages = data?.totalPages || 1;
+  const hasMore = data?.hasMore ?? false;
+  const total = data?.total || 0;
+  const availableFilters = data?.filters || { sizes: [], colors: [], brands: [] };
 
   // Check if any filter is active
   const hasActiveFilters = selectedCategory !== 'all' ||
@@ -322,7 +343,7 @@ const InventoryPage = () => {
           <div>
             <h1 className="text-2xl font-bold text-neutral-900">Inventory</h1>
             <p className="text-sm text-neutral-500 mt-1">
-              {data?.total || 0} product{(data?.total || 0) !== 1 ? 's' : ''} across {categories.length} categor{categories.length !== 1 ? 'ies' : 'y'}
+              {total} product{total !== 1 ? 's' : ''} across {categories.length} categor{categories.length !== 1 ? 'ies' : 'y'}
             </p>
           </div>
           <div className="flex gap-2">
@@ -354,7 +375,7 @@ const InventoryPage = () => {
                 type="text"
                 placeholder="Search products..."
                 value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
+                onChange={(e) => { setSearchTerm(e.target.value); setPage(1); }}
                 className="w-full h-11 pl-10 pr-4 border border-neutral-300 rounded-xl text-sm placeholder-neutral-400 focus:ring-2 focus:ring-[#312E81]/20 focus:border-[#312E81] outline-none"
               />
             </div>
@@ -367,15 +388,18 @@ const InventoryPage = () => {
                     const [field, order] = e.target.value.split('-');
                     setSortBy(field);
                     setSortOrder(order);
+                    setPage(1);
                   }}
-                  className="appearance-none pl-3 pr-8 py-2.5 border border-[#CBD5E1] rounded-xl text-sm cursor-pointer hover:bg-neutral-50 focus:ring-2 focus:ring-[#312E81]/20 focus:border-[#312E81] outline-none bg-white"
+                  className="appearance-none pl-3 pr-8 py-2.5 border border-[#CBD5E1] rounded-lg text-sm cursor-pointer hover:bg-neutral-50 focus:ring-2 focus:ring-[#312E81]/20 focus:border-[#312E81] outline-none bg-white"
                 >
-                  <option value="createdAt-desc">Newest</option>
-                  <option value="createdAt-asc">Oldest</option>
-                  <option value="price-desc">Price ↓</option>
-                  <option value="price-asc">Price ↑</option>
-                  <option value="stock-asc">Stock ↓</option>
-                  <option value="stock-desc">Stock ↑</option>
+                  <option value="createdAt-desc">Newest First</option>
+                  <option value="createdAt-asc">Oldest First</option>
+                  <option value="price-desc">Price: High to Low</option>
+                  <option value="price-asc">Price: Low to High</option>
+                  <option value="stock-asc">Stock: Low to High</option>
+                  <option value="stock-desc">Stock: High to Low</option>
+                  <option value="name-asc">Name: A to Z</option>
+                  <option value="name-desc">Name: Z to A</option>
                 </select>
                 <ChevronDown size={14} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-neutral-400 pointer-events-none" />
               </div>
@@ -422,7 +446,7 @@ const InventoryPage = () => {
           {/* Category pills */}
           <div className="flex gap-2 overflow-x-auto px-4 mt-3 scrollbar-none">
             <button
-              onClick={() => setSelectedCategory('all')}
+              onClick={() => { setSelectedCategory('all'); setPage(1); }}
               className={`sm:px-4 sm:py-2 sm:text-sm px-3 py-1.5 text-[13px] rounded-full font-medium whitespace-nowrap transition-all duration-150 ${
                 selectedCategory === 'all'
                   ? 'bg-[#312E81] text-white'
@@ -434,7 +458,7 @@ const InventoryPage = () => {
             {categories.map((cat) => (
               <button
                 key={cat}
-                onClick={() => setSelectedCategory(cat)}
+                onClick={() => { setSelectedCategory(cat); setPage(1); }}
                 className={`sm:px-4 sm:py-2 sm:text-sm px-3 py-1.5 text-[13px] rounded-full font-medium whitespace-nowrap transition-all duration-150 ${
                   selectedCategory === cat
                     ? 'bg-[#312E81] text-white'
@@ -447,7 +471,7 @@ const InventoryPage = () => {
           </div>
 
           {/* Stock status pills */}
-          <div className="flex gap-2 overflow-x-auto pb-1 -mx-1 px-1 scrollbar-none">
+          <div className="flex gap-2 overflow-x-auto px-4 mt-2 scrollbar-none">
             {[
               { value: 'all', label: 'All Stock' },
               { value: 'in_stock', label: 'In Stock' },
@@ -456,10 +480,10 @@ const InventoryPage = () => {
             ].map((opt) => (
               <button
                 key={opt.value}
-                onClick={() => setSelectedStockStatus(opt.value)}
+                onClick={() => { setSelectedStockStatus(opt.value); setPage(1); }}
                 className={`px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition-colors ${
                   selectedStockStatus === opt.value
-                    ? 'bg-[#E8835C] text-white'
+                    ? 'bg-[#312E81] text-white'
                     : 'bg-neutral-100 text-[#64748B] hover:bg-neutral-200'
                 }`}
               >
@@ -467,15 +491,66 @@ const InventoryPage = () => {
               </button>
             ))}
           </div>
+
+          {/* Attribute filter dropdowns */}
+          {(availableFilters.sizes?.length > 0 || availableFilters.colors?.length > 0 || availableFilters.brands?.length > 0) && (
+            <div className="flex gap-2 overflow-x-auto px-4 mt-2 scrollbar-none">
+              {availableFilters.sizes?.length > 0 && (
+                <div className="relative">
+                  <select
+                    value={attrFilters.size}
+                    onChange={(e) => { setAttrFilters(prev => ({ ...prev, size: e.target.value })); setPage(1); }}
+                    className="appearance-none pl-3 pr-8 py-1.5 border border-[#CBD5E1] rounded-full text-xs cursor-pointer hover:bg-neutral-50 outline-none bg-white text-[#64748B]"
+                  >
+                    <option value="">Size: All</option>
+                    {availableFilters.sizes.map((s) => (
+                      <option key={s} value={s}>{s}</option>
+                    ))}
+                  </select>
+                  <ChevronDown size={10} className="absolute right-2 top-1/2 -translate-y-1/2 text-neutral-400 pointer-events-none" />
+                </div>
+              )}
+              {availableFilters.colors?.length > 0 && (
+                <div className="relative">
+                  <select
+                    value={attrFilters.color}
+                    onChange={(e) => { setAttrFilters(prev => ({ ...prev, color: e.target.value })); setPage(1); }}
+                    className="appearance-none pl-3 pr-8 py-1.5 border border-[#CBD5E1] rounded-full text-xs cursor-pointer hover:bg-neutral-50 outline-none bg-white text-[#64748B]"
+                  >
+                    <option value="">Color: All</option>
+                    {availableFilters.colors.map((c) => (
+                      <option key={c} value={c}>{c}</option>
+                    ))}
+                  </select>
+                  <ChevronDown size={10} className="absolute right-2 top-1/2 -translate-y-1/2 text-neutral-400 pointer-events-none" />
+                </div>
+              )}
+              {availableFilters.brands?.length > 0 && (
+                <div className="relative">
+                  <select
+                    value={attrFilters.brand}
+                    onChange={(e) => { setAttrFilters(prev => ({ ...prev, brand: e.target.value })); setPage(1); }}
+                    className="appearance-none pl-3 pr-8 py-1.5 border border-[#CBD5E1] rounded-full text-xs cursor-pointer hover:bg-neutral-50 outline-none bg-white text-[#64748B]"
+                  >
+                    <option value="">Brand: All</option>
+                    {availableFilters.brands.map((b) => (
+                      <option key={b} value={b}>{b}</option>
+                    ))}
+                  </select>
+                  <ChevronDown size={10} className="absolute right-2 top-1/2 -translate-y-1/2 text-neutral-400 pointer-events-none" />
+                </div>
+              )}
+            </div>
+          )}
         </div>
 
         {/* Active filter chips */}
         {hasActiveFilters && (
           <div className="flex flex-wrap items-center gap-2 px-4 py-3 bg-[#EEF2FF] border border-[#312E81]/10 rounded-xl">
-            <span className="text-xs font-medium text-[#312E81]">Active:</span>
+            <span className="text-xs font-medium text-[#312E81]">Active Filters:</span>
             {selectedCategory !== 'all' && (
               <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-white border border-[#312E81]/20 rounded-full text-xs text-[#312E81]">
-                {selectedCategory}
+                Category: {selectedCategory}
                 <button onClick={() => setSelectedCategory('all')}>
                   <X size={12} />
                 </button>
@@ -489,6 +564,30 @@ const InventoryPage = () => {
                 </button>
               </span>
             )}
+            {attrFilters.size && (
+              <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-white border border-[#312E81]/20 rounded-full text-xs text-[#312E81]">
+                Size: {attrFilters.size}
+                <button onClick={() => setAttrFilters(prev => ({ ...prev, size: '' }))}>
+                  <X size={12} />
+                </button>
+              </span>
+            )}
+            {attrFilters.color && (
+              <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-white border border-[#312E81]/20 rounded-full text-xs text-[#312E81]">
+                Color: {attrFilters.color}
+                <button onClick={() => setAttrFilters(prev => ({ ...prev, color: '' }))}>
+                  <X size={12} />
+                </button>
+              </span>
+            )}
+            {attrFilters.brand && (
+              <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-white border border-[#312E81]/20 rounded-full text-xs text-[#312E81]">
+                Brand: {attrFilters.brand}
+                <button onClick={() => setAttrFilters(prev => ({ ...prev, brand: '' }))}>
+                  <X size={12} />
+                </button>
+              </span>
+            )}
             {searchTerm && (
               <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-white border border-[#312E81]/20 rounded-full text-xs text-[#312E81]">
                 "{searchTerm}"
@@ -498,7 +597,7 @@ const InventoryPage = () => {
               </span>
             )}
             <button
-              onClick={clearAllFilters}
+              onClick={() => { clearAllFilters(); setAttrFilters({ size: '', color: '', brand: '' }); }}
               className="ml-auto text-xs font-medium text-[#312E81] hover:underline"
             >
               Clear All
@@ -508,85 +607,17 @@ const InventoryPage = () => {
 
         {/* Product Grid */}
         {viewMode === 'grid' ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-            {products.map((product) => {
-              const badge = getStockBadge(product.status);
-              return (
-                <div
-                  key={product._id}
-                  onClick={() => navigate(`/inventory/${product._id}`)}
-                  className="bg-white rounded-2xl border border-[#CBD5E1] overflow-hidden hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 cursor-pointer group"
-                >
-                  {/* Image */}
-                  <div className="aspect-square bg-neutral-50 flex items-center justify-center relative">
-                    {product.image ? (
-                      <img
-                        src={product.image}
-                        alt={product.name}
-                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                      />
-                    ) : (
-                      <Package size={40} className="text-neutral-300" />
-                    )}
-                  </div>
-
-                  {/* Content */}
-                  <div className="p-4">
-                    <h3 className="font-semibold text-[#1E293B] mb-2 truncate text-sm">
-                      {product.name}
-                    </h3>
-
-                    {/* Attributes */}
-                    {(product.attributes?.size || product.attributes?.color) && (
-                      <div className="flex gap-1.5 mb-3 flex-wrap">
-                        {product.attributes?.size && (
-                          <span className="px-2 py-0.5 bg-neutral-100 rounded-md text-[11px] text-[#64748B] font-medium">
-                            {product.attributes.size}
-                          </span>
-                        )}
-                        {product.attributes?.color && (
-                          <span className="px-2 py-0.5 bg-neutral-100 rounded-md text-[11px] text-[#64748B] font-medium">
-                            {product.attributes.color}
-                          </span>
-                        )}
-                        {product.attributes?.brand && (
-                          <span className="px-2 py-0.5 bg-neutral-100 rounded-md text-[11px] text-[#64748B] font-medium">
-                            {product.attributes.brand}
-                          </span>
-                        )}
-                      </div>
-                    )}
-
-                    {/* Price row */}
-                    <div className="space-y-1 mb-3">
-                      <div className="flex justify-between text-xs">
-                        <span className="text-[#64748B]">Buy</span>
-                        <span className="font-medium text-[#1E293B]">
-                          {formatCurrency(product.costPrice || product.buyingPrice || 0)}
-                        </span>
-                      </div>
-                      <div className="flex justify-between text-xs">
-                        <span className="text-[#64748B]">Sell</span>
-                        <span className="font-semibold text-[#E8835C]">
-                          {formatCurrency(product.price || product.sellingPrice || 0)}
-                        </span>
-                      </div>
-                    </div>
-
-                    {/* Stock badge */}
-                    <div className="flex items-center justify-between">
-                      <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-medium ${badge.bg} ${badge.text}`}>
-                        <span className={`w-1.5 h-1.5 rounded-full ${badge.dot}`} />
-                        {badge.label}
-                      </span>
-                      <span className="text-xs text-[#64748B] font-medium">
-                        {product.stock || product.quantity || 0} left
-                      </span>
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
+          <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 md:gap-5">
+            {products.map((product) => (
+              <ProductCard
+                key={product._id}
+                product={product}
+                onEdit={(p) => navigate(`/inventory/${p._id}`)}
+                onRestock={setRestockProduct}
+                onDuplicate={(p) => navigate(`/inventory/add?duplicate=${p._id}`)}
+                onDelete={setDeleteProduct}
+              />
+            ))}
           </div>
         ) : (
           /* List View */
@@ -644,6 +675,67 @@ const InventoryPage = () => {
           </div>
         )}
 
+        {/* Pagination (Desktop) / Load More (Mobile) */}
+        {totalPages > 1 && (
+          <>
+            {/* Desktop pagination */}
+            <div className="hidden sm:flex items-center justify-between">
+              <p className="text-sm text-[#64748B]">
+                Showing {(page - 1) * 20 + 1}-{Math.min(page * 20, total)} of {total} products
+              </p>
+              <div className="flex items-center gap-1.5">
+                <button
+                  onClick={() => setPage(p => Math.max(1, p - 1))}
+                  disabled={page === 1}
+                  className="px-3 py-2 border border-neutral-300 rounded-lg text-sm font-medium text-neutral-700 hover:bg-neutral-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                >
+                  Previous
+                </button>
+                {Array.from({ length: Math.min(totalPages, 7) }, (_, i) => {
+                  const pageNum = totalPages <= 7 ? i + 1 : page <= 4 ? i + 1 : page >= totalPages - 3 ? totalPages - 6 + i : page - 3 + i;
+                  return (
+                    <button
+                      key={pageNum}
+                      onClick={() => setPage(pageNum)}
+                      className={`w-9 h-9 rounded-lg text-sm font-medium transition-colors ${
+                        pageNum === page
+                          ? 'bg-[#312E81] text-white'
+                          : 'border border-neutral-300 text-neutral-700 hover:bg-neutral-50'
+                      }`}
+                    >
+                      {pageNum}
+                    </button>
+                  );
+                })}
+                <button
+                  onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+                  disabled={page === totalPages}
+                  className="px-3 py-2 border border-neutral-300 rounded-lg text-sm font-medium text-neutral-700 hover:bg-neutral-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                >
+                  Next
+                </button>
+              </div>
+            </div>
+
+            {/* Mobile Load More */}
+            <div className="flex sm:hidden justify-center">
+              {hasMore ? (
+                <button
+                  onClick={() => setPage(p => p + 1)}
+                  className="flex items-center gap-2 px-8 py-3 bg-white border border-[#CBD5E1] rounded-xl text-sm font-medium text-[#64748B] hover:bg-neutral-50 transition-colors"
+                >
+                  <Loader2 size={16} className="animate-spin hidden" />
+                  Load More Products
+                </button>
+              ) : (
+                <p className="text-sm text-[#64748B]">
+                  Showing all {total} products
+                </p>
+              )}
+            </div>
+          </>
+        )}
+
         {/* FAB */}
         <button
           onClick={() => navigate('/inventory/add')}
@@ -653,6 +745,30 @@ const InventoryPage = () => {
           <Plus size={24} />
         </button>
       </div>
+
+      {/* Restock Modal */}
+      {restockProduct && (
+        <RestockModal
+          product={restockProduct}
+          onClose={() => setRestockProduct(null)}
+          onConfirm={(data) => {
+            console.log('Restock:', data);
+            setRestockProduct(null);
+          }}
+        />
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {deleteProduct && (
+        <DeleteConfirmModal
+          product={deleteProduct}
+          onClose={() => setDeleteProduct(null)}
+          onConfirm={(product) => {
+            console.log('Delete:', product._id);
+            setDeleteProduct(null);
+          }}
+        />
+      )}
     </div>
   );
 };
