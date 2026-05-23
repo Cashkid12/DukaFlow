@@ -1,5 +1,6 @@
 import React, { useEffect, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
+import Logo from '../Logo';
 
 const OnboardingLayout = ({ currentStep, children }) => {
   const navigate = useNavigate();
@@ -32,12 +33,7 @@ const OnboardingLayout = ({ currentStep, children }) => {
       {/* Header */}
       <div className="bg-white border-b border-neutral-200">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 py-4">
-          <h1 
-            className="text-xl sm:text-2xl font-bold cursor-pointer"
-            onClick={() => navigate('/')}
-          >
-            Duka<span style={{ color: '#E8835C' }}>Flow</span>
-          </h1>
+          <Logo size="md" />
         </div>
       </div>
 

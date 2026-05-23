@@ -1,9 +1,46 @@
 <!doctype html>
-<html lang="en">
+<html lang="en-KE">
   <head>
     <meta charset="UTF-8" />
+
+    <!-- Favicon & Icons -->
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/icons/icon-180x180.png" />
+    <link rel="mask-icon" href="/favicon.svg" color="#312E81" />
+
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="robots" content="index, follow" />
+    <meta name="googlebot" content="index, follow" />
+    <link rel="canonical" href="https://dukaflow.com/" />
+
+    <!-- Web App Manifest -->
+    <link rel="manifest" href="/manifest.json" />
+
+    <!-- PWA: iOS & General -->
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="DukaFlow" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="application-name" content="DukaFlow" />
+
+    <!-- PWA: iOS Splash Screens -->
+    <link rel="apple-touch-startup-image" href="/splash/splash-1290x2796.png" media="(device-width: 430px) and (device-height: 932px) and (-webkit-device-pixel-ratio: 3)" />
+    <link rel="apple-touch-startup-image" href="/splash/splash-1179x2556.png" media="(device-width: 393px) and (device-height: 852px) and (-webkit-device-pixel-ratio: 3)" />
+    <link rel="apple-touch-startup-image" href="/splash/splash-1284x2778.png" media="(device-width: 428px) and (device-height: 926px) and (-webkit-device-pixel-ratio: 3)" />
+    <link rel="apple-touch-startup-image" href="/splash/splash-1170x2532.png" media="(device-width: 390px) and (device-height: 844px) and (-webkit-device-pixel-ratio: 3)" />
+    <link rel="apple-touch-startup-image" href="/splash/splash-1080x2340.png" media="(device-width: 360px) and (device-height: 780px) and (-webkit-device-pixel-ratio: 3)" />
+    <link rel="apple-touch-startup-image" href="/splash/splash-1125x2436.png" media="(device-width: 375px) and (device-height: 812px) and (-webkit-device-pixel-ratio: 3)" />
+    <link rel="apple-touch-startup-image" href="/splash/splash-828x1792.png" media="(device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 2)" />
+    <link rel="apple-touch-startup-image" href="/splash/splash-750x1334.png" media="(device-width: 375px) and (device-height: 667px) and (-webkit-device-pixel-ratio: 2)" />
+    <link rel="apple-touch-startup-image" href="/splash/splash-2048x2732.png" media="(device-width: 1024px) and (device-height: 1366px) and (-webkit-device-pixel-ratio: 2)" />
+    <link rel="apple-touch-startup-image" href="/splash/splash-1668x2388.png" media="(device-width: 834px) and (device-height: 1194px) and (-webkit-device-pixel-ratio: 2)" />
+    <link rel="apple-touch-startup-image" href="/splash/splash-1640x2360.png" media="(device-width: 820px) and (device-height: 1180px) and (-webkit-device-pixel-ratio: 2)" />
+    <link rel="apple-touch-startup-image" href="/splash/splash-1488x2266.png" media="(device-width: 744px) and (device-height: 1133px) and (-webkit-device-pixel-ratio: 2)" />
+
+    <!-- PWA: Windows Tiles -->
+    <meta name="msapplication-TileColor" content="#312E81" />
+    <meta name="msapplication-TileImage" content="/icons/icon-144x144.png" />
+    <meta name="msapplication-config" content="/browserconfig.xml" />
     
     <!-- Primary Meta Tags -->
     <title>DukaFlow - Run Your Duka, Smarter</title>
@@ -36,6 +73,94 @@
   </head>
   <body>
     <div id="root"></div>
+
+    <!-- ═══ PWA Splash Screen (outside #root for reliable removal) ═══ -->
+    <div id="pwa-splash" style="
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+      width: 100vw;
+      background: #312E81;
+      font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      position: fixed;
+      inset: 0;
+      z-index: 99999;
+    ">
+      <svg width="80" height="80" viewBox="0 0 48 48" fill="none" style="margin-bottom: 20px; display: block;">
+        <polygon points="7,18 24,6 41,18" fill="white"/>
+        <rect x="12" y="18" width="24" height="17" rx="2" fill="white" opacity="0.92"/>
+        <path d="M19 35 L19 28 Q19 22 24 22 Q29 22 29 28 L29 35 Z" fill="#312E81"/>
+        <rect x="22.5" y="27" width="3" height="6" rx="1.5" fill="white" opacity="0.30"/>
+        <path d="M6 39.5 C14 34, 20 42, 24 39.5 C28 37, 34 42, 42 39.5" stroke="#E8835C" stroke-width="3" stroke-linecap="round" fill="none"/>
+      </svg>
+      <span style="font-size: 20px; font-weight: 700; color: white; letter-spacing: -0.5px;">
+        Duka<span style="color: #E8835C;">Flow</span>
+      </span>
+      <span style="font-size: 14px; color: rgba(255,255,255,0.7); margin-top: 10px;">
+        Loading…
+      </span>
+    </div>
+
+    <script>
+      // Fade out splash when React replaces root content
+      window.__pwaRemoveSplash = function() {
+        var splash = document.getElementById('pwa-splash');
+        if (!splash || splash.dataset.hiding) return;
+        splash.dataset.hiding = '1';
+        splash.style.transition = 'opacity 300ms ease-out';
+        splash.style.opacity = '0';
+        splash.style.pointerEvents = 'none';
+        setTimeout(function() { splash.remove(); }, 350);
+      };
+      // MutationObserver fallback: detect when React renders into #root
+      var observer = new MutationObserver(function(mutations) {
+        for (var i = 0; i < mutations.length; i++) {
+          for (var j = 0; j < mutations[i].addedNodes.length; j++) {
+            var node = mutations[i].addedNodes[j];
+            if (node.nodeType === 1 && node.id !== 'pwa-splash') {
+              window.__pwaRemoveSplash();
+              observer.disconnect();
+              return;
+            }
+          }
+        }
+      });
+      observer.observe(document.getElementById('root'), { childList: true, subtree: true });
+      // Safety timeout: hide splash after 6s no matter what
+      setTimeout(window.__pwaRemoveSplash, 6000);
+    </script>
+
+    <!-- PWA: Service Worker Registration -->
+    <script>
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+          navigator.serviceWorker.register('/sw.js', { scope: '/' })
+            .then(registration => {
+              console.log('[DukaFlow] SW registered:', registration.scope);
+
+              // Listen for updates
+              registration.addEventListener('updatefound', () => {
+                const installing = registration.installing;
+                if (!installing) return;
+
+                installing.addEventListener('statechange', () => {
+                  if (installing.state === 'installed' && navigator.serviceWorker.controller) {
+                    // New version available — notify the app
+                    window.dispatchEvent(new CustomEvent('sw-update-available'));
+                    console.log('[DukaFlow] New version ready — refresh to update.');
+                  }
+                });
+              });
+            })
+            .catch(error => {
+              console.log('[DukaFlow] SW registration failed:', error);
+            });
+        });
+      }
+    </script>
+
     <script type="module" src="/src/main.jsx"></script>
   </body>
 </html>

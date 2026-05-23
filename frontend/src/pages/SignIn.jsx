@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import Logo from '../components/Logo';
 import { useSignIn } from '@clerk/clerk-react';
 import { Mail, Lock, Eye, EyeOff, AlertCircle, Loader2 } from 'lucide-react';
 
@@ -124,9 +125,7 @@ const SignInPage = () => {
       <div className="relative w-full max-w-[480px] bg-white rounded-3xl shadow-2xl border border-neutral-100 p-7 md:p-10">
         {/* Logo */}
         <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold text-[#312E81]">
-            Duka<span style={{ color: '#E8835C' }}>Flow</span>
-          </h1>
+          <Logo size="lg" asLink={false} />
         </div>
 
         {/* Header */}

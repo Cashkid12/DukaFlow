@@ -57,9 +57,9 @@ export const ClerkAuthProvider = ({ children }) => {
   return (
     <ClerkProvider
       publishableKey={publishableKey}
-      forceRedirectUrl="/onboarding/shop-name"
-      signUpFallbackRedirectUrl="/onboarding/shop-name"
-      signInFallbackRedirectUrl="/onboarding/shop-name"
+      forceRedirectUrl="/onboarding"
+      signUpFallbackRedirectUrl="/onboarding"
+      signInFallbackRedirectUrl="/onboarding"
       appearance={{
         variables: {
           colorPrimary: '#312E81',

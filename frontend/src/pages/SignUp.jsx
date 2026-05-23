@@ -1,11 +1,13 @@
 import { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
+import Logo from '../components/Logo';
 import { useSignUp, useUser } from '@clerk/clerk-react';
 import { Mail, Lock, Eye, EyeOff, User, Phone, ArrowRight, Loader2 } from 'lucide-react';
 
 const SignUpPage = () => {
   const { signUp, isLoaded } = useSignUp();
   const { isSignedIn } = useUser();
+  const navigate = useNavigate();
   
   const [formData, setFormData] = useState({
     fullName: '',
@@ -22,10 +24,9 @@ const SignUpPage = () => {
     if (isLoaded && isSignedIn) {
       console.log('✅ User already signed in, redirecting to onboarding...');
       console.log('📍 Current location:', window.location.href);
-      console.log('🎯 Target location: /onboarding/shop-name');
+      console.log('🎯 Target location: /onboarding');
       
-      // Use window.location for hard redirect
-      window.location.href = '/onboarding/shop-name';
+      navigate('/onboarding', { replace: true });
     }
   }, [isLoaded, isSignedIn]);
 
@@ -38,7 +39,7 @@ const SignUpPage = () => {
         // Check if there's an active sign-up from OAuth redirect
         if (signUp.status === 'complete') {
           console.log('✅ OAuth sign-up complete, redirecting to onboarding...');
-          window.location.href = '/onboarding/shop-name';
+          navigate('/onboarding', { replace: true });
         } else if (signUp.status === 'missing_requirements') {
           console.log('⚠️ OAuth sign-up needs additional steps...');
           // Clerk will handle the UI for missing requirements
@@ -150,7 +151,7 @@ const SignUpPage = () => {
       // Clerk v5+ automatically signs in after create — redirect
       if (result.status === 'complete') {
         console.log('🚀 Sign-up complete, redirecting to onboarding...');
-        window.location.href = '/onboarding/shop-name';
+        navigate('/onboarding', { replace: true });
       } else {
         // Some additional verification needed (email, phone, etc.)
         console.log('⚠️ Additional verification required, status:', result.status);
@@ -167,7 +168,7 @@ const SignUpPage = () => {
         console.log('⚠️ User already signed in, redirecting to onboarding...');
         setError('Account created! Redirecting to onboarding...');
         setTimeout(() => {
-          window.location.href = '/onboarding/shop-name';
+          navigate('/onboarding', { replace: true });
         }, 1500);
         return;
       }
@@ -177,7 +178,7 @@ const SignUpPage = () => {
         console.log('⚠️ Redirect URL not allowed, forcing redirect...');
         setError('Account created! Redirecting to onboarding...');
         setTimeout(() => {
-          window.location.href = '/onboarding/shop-name';
+          navigate('/onboarding', { replace: true });
         }, 1500);
         return;
       }
@@ -257,9 +258,7 @@ const SignUpPage = () => {
 
         {/* Logo */}
         <div className="text-center mb-6">
-          <h1 className="text-3xl font-bold text-[#312E81]">
-            Duka<span style={{ color: '#E8835C' }}>Flow</span>
-          </h1>
+          <Logo size="lg" asLink={false} />
         </div>
 
         {/* Header */}
@@ -448,7 +447,7 @@ const SignUpPage = () => {
                     type="button"
                     onClick={() => {
                       console.log('🚀 Manual redirect to onboarding clicked');
-                      window.location.href = '/onboarding/shop-name';
+                      navigate('/onboarding', { replace: true });
                     }}
                     className="text-sm text-[#312E81] font-medium hover:underline"
                   >

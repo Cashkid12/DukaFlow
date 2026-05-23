@@ -1,5 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { NavLink } from 'react-router-dom';
+import Logo from './Logo';
 import { 
   LayoutDashboard, 
   Package, 
@@ -48,9 +49,7 @@ const Sidebar = ({ isMobileOpen = false, onMobileClose }) => {
     <>
       {/* Mobile: Close button at top */}
       <div className="lg:hidden flex items-center justify-between p-4 border-b border-neutral-200">
-        <h1 className="text-xl font-bold text-[#312E81]">
-          Duka<span style={{ color: '#E8835C' }}>Flow</span>
-        </h1>
+        <Logo size="sm" asLink={false} />
         <button
           onClick={onMobileClose}
           className="w-10 h-10 flex items-center justify-center rounded-lg hover:bg-neutral-100"
@@ -68,16 +67,14 @@ const Sidebar = ({ isMobileOpen = false, onMobileClose }) => {
         }}
       >
         {isCollapsed ? (
-          <div 
-            className="w-10 h-10 rounded-lg bg-[#312E81] flex items-center justify-center"
+          <div
+            className="w-10 h-10 rounded-lg flex items-center justify-center cursor-pointer"
             onClick={() => setIsCollapsed(false)}
           >
-            <span className="text-white font-bold text-xl">D</span>
+            <Logo variant="icon" size="sm" asLink={false} />
           </div>
         ) : (
-          <h1 className="text-2xl font-bold text-[#312E81]">
-            Duka<span style={{ color: '#E8835C' }}>Flow</span>
-          </h1>
+          <Logo size="md" asLink={false} />
         )}
       </div>
 

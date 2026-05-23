@@ -13,6 +13,7 @@ import { useDebounce } from '../hooks/useDebounce';
 import { formatCurrency, formatDateTime } from '../utils/formatters';
 import ReceiptView, { printReceipt, generateWhatsAppMessage } from '../components/sales/ReceiptView';
 import TransactionHistory from '../components/sales/TransactionHistory';
+import { markFirstSale } from '../hooks/usePwaInstall';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 
@@ -270,6 +271,9 @@ const SalesPage = () => {
       setSaleResult(result.data);
       setShowProcessing(false);
       setShowSuccessModal(true);
+
+      // Notify PWA install trigger that first sale was recorded
+      markFirstSale();
       // Clear cart
       setCart([]);
       setDiscount({ type: 'amount', value: '' });

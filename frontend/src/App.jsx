@@ -1,5 +1,5 @@
-import React from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import React, { useEffect } from 'react';
+import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { SignedIn, SignedOut, RedirectToSignIn } from '@clerk/clerk-react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import LandingPage from './pages/LandingPage';
@@ -19,6 +19,8 @@ import WorkerDetailPage from './pages/WorkerDetailPage';
 import ReportsPage from './pages/ReportsPage';
 import SettingsPage from './pages/SettingsPage';
 import SuperAdminPanel from './pages/SuperAdminPanel';
+import UpdateNotification from './components/UpdateNotification';
+import { trackVisit, trackInteraction } from './hooks/usePwaInstall';
 
 // Create React Query client
 const queryClient = new QueryClient({
@@ -31,10 +33,37 @@ const queryClient = new QueryClient({
   },
 });
 
+// ─── PWA initialisation wrapper ──────────────────────────────────────────────
+// Tracks visits & interactions for the install prompt trigger logic.
+function PwaInit({ children }) {
+  useEffect(() => {
+    trackVisit();
+
+    const onInteract = () => trackInteraction();
+    window.addEventListener('click', onInteract);
+    window.addEventListener('keydown', onInteract);
+    window.addEventListener('touchstart', onInteract, { passive: true });
+
+    return () => {
+      window.removeEventListener('click', onInteract);
+      window.removeEventListener('keydown', onInteract);
+      window.removeEventListener('touchstart', onInteract);
+    };
+  }, []);
+
+  return (
+    <>
+      <UpdateNotification />
+      {children}
+    </>
+  );
+}
+
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <Router>
+      <PwaInit>
       <Routes>
         {/* Public Routes */}
         <Route path="/" element={<LandingPage />} />
@@ -44,15 +73,15 @@ function App() {
         {/* Test Route */}
         <Route path="/test" element={<TestOnboarding />} />
         
-        {/* Redirect /signup to /sign-up */}
-        <Route path="/signup" element={<Navigate to="/sign-up" replace />} />
+        {/* Redirect /signup to /sign-up (avoid double-hop: render directly) */}
+        <Route path="/signup" element={<SignUp />} />
         
         {/* Super Admin Panel */}
         <Route path="/admin" element={<SuperAdminPanel />} />
 
         {/* Onboarding Route — Post-Signup, First-time only */}
         <Route
-          path="/onboarding"
+          path="/onboarding/*"
           element={
             <SignedIn>
               <OnboardingPage />
@@ -93,6 +122,7 @@ function App() {
           }
         />
       </Routes>
+      </PwaInit>
     </Router>
     </QueryClientProvider>
   );

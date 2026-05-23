@@ -3,9 +3,12 @@ import { Outlet } from 'react-router-dom';
 import Sidebar from '../components/Sidebar';
 import TopBar from '../components/TopBar';
 import MobileNav from '../components/MobileNav';
+import PwaInstallPrompt from '../components/PwaInstallPrompt';
+import { usePwaInstall } from '../hooks/usePwaInstall';
 
 const DashboardLayout = () => {
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
+  const { show, platform, dismiss, install } = usePwaInstall({ isDashboard: true });
 
   return (
     <div className="flex bg-neutral-50 min-h-screen overflow-x-hidden">
@@ -20,6 +23,14 @@ const DashboardLayout = () => {
         </main>
       </div>
       <MobileNav />
+
+      {/* PWA Install Prompt */}
+      <PwaInstallPrompt
+        show={show}
+        platform={platform}
+        onDismiss={dismiss}
+        onInstall={install}
+      />
     </div>
   );
 };

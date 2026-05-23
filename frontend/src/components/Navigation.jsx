@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
+import Logo from './Logo';
 import { Button } from './Button';
 import { Menu, X, Store, Smartphone, ShoppingCart, Sparkles, Wrench, Pill, TrendingUp, Package, Users, Check, Play, ArrowRight } from 'lucide-react';
 import { UserButton, useUser } from '@clerk/clerk-react';
@@ -29,11 +30,7 @@ export const Header = () => {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-full">
         <div className="flex items-center justify-between h-full">
           {/* Logo */}
-          <Link to="/" className="flex items-center gap-2 group">
-            <span className="text-2xl font-bold text-primary-deep">
-              Duka<span className="text-accent">Flow</span>
-            </span>
-          </Link>
+          <Logo size="lg" />
 
           {/* Desktop Navigation */}
           <nav className="hidden lg:flex items-center gap-10">
@@ -177,14 +174,9 @@ export const Footer = () => {
         >
           {/* Column 1 - Brand (full width on tablet, spans wider on desktop) */}
           <div className="md:col-span-2 lg:col-span-1">
-            <h3 style={{
-              fontSize: '24px',
-              fontWeight: 700,
-              color: '#FFFFFF',
-              marginBottom: '8px'
-            }}>
-              Duka<span style={{ color: '#E8835C' }}>Flow</span>
-            </h3>
+            <div style={{ marginBottom: '8px' }}>
+              <Logo size="md" dark />
+            </div>
             <p style={{
               fontSize: '14px',
               color: '#9CA3AF',
