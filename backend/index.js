@@ -36,7 +36,13 @@ initializeCronJobs();
 
 // Middleware
 // CORS: allow localhost (any port), 127.0.0.1, and local network IPs in development
-const allowedOrigin = process.env.CLIENT_URL || 'http://localhost:5173';
+// In production, CLIENT_URL can be a comma-separated list of allowed origins
+const getAllowedOrigins = () => {
+  const clientUrl = process.env.CLIENT_URL;
+  if (!clientUrl) return ['http://localhost:5173'];
+  return clientUrl.split(',').map((u) => u.trim()).filter(Boolean);
+};
+
 app.use(cors({
   origin: (origin, callback) => {
     // Allow requests with no origin (server-to-server, mobile apps, curl)
@@ -53,8 +59,14 @@ app.use(cors({
       }
     }
 
-    // In production, check exact match
-    if (origin === allowedOrigin) {
+    // In production, check against allowed origins list
+    const allowedOrigins = getAllowedOrigins();
+    if (allowedOrigins.includes(origin)) {
+      return callback(null, true);
+    }
+
+    // Also allow any vercel.app subdomain (preview deployments)
+    if (origin.endsWith('.vercel.app') || origin === 'https://duka-flow.vercel.app') {
       return callback(null, true);
     }
 
@@ -81,9 +93,20 @@ app.use('/api/reports', reportRoutes);
 app.use('/api/settings', settingsRoutes);
 app.use('/api/branches', branchRoutes);
 
+// Root route — friendly landing for browser visits
+app.get('/', (req, res) => {
+  res.json({
+    status: 'OK',
+    message: 'DukaFlow API is running',
+    version: '1.0.0',
+    docs: 'All API routes are under /api/',
+    health: '/api/health',
+  });
+});
+
 // Health check route
 app.get('/api/health', (req, res) => {
-  res.json({ status: 'OK', message: 'DukaFlow API is running' });
+  res.json({ status: 'OK', message: 'DukaFlow API is running', timestamp: Date.now() });
 });
 
 // Socket.io connection
