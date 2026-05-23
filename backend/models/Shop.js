@@ -20,10 +20,25 @@ const shopSchema = new mongoose.Schema({
     required: true,
   },
   logo: String,
+  description: {
+    type: String,
+    maxlength: 200,
+  },
   businessType: {
     type: String,
     enum: ['clothing', 'electronics', 'grocery', 'pharmacy', 'hardware', 'cosmetics', 'other'],
     required: true,
+  },
+  businessTypes: [{
+    type: String,
+    enum: ['clothing', 'electronics', 'grocery', 'pharmacy', 'hardware', 'cosmetics', 'other'],
+  }],
+  location: String,
+  source: String,
+  shopSize: {
+    type: String,
+    enum: ['lt100', '100-500', '500-2000', 'gt2000', ''],
+    default: '',
   },
   settings: {
     categories: [String],
@@ -85,6 +100,21 @@ const shopSchema = new mongoose.Schema({
   multiBranchEnabled: {
     type: Boolean,
     default: false,
+  },
+  notificationPreferences: {
+    emailReports: {
+      daily: { type: Boolean, default: true },
+      weekly: { type: Boolean, default: true },
+      monthly: { type: Boolean, default: true },
+    },
+    alerts: {
+      lowStock: { type: Boolean, default: true },
+      expiry: { type: Boolean, default: false },
+      expiryDays: { type: Number, default: 7 },
+      workerLogin: { type: Boolean, default: false },
+      largeSale: { type: Boolean, default: false },
+      largeSaleAmount: { type: Number, default: 50000 },
+    },
   },
   isActive: {
     type: Boolean,

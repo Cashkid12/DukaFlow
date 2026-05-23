@@ -10,6 +10,11 @@ import { io } from 'socket.io-client';
  * - stock:updated → Update low stock card, alerts
  * - worker:login → Update active workers card, online status
  * - alert:new → Update alerts list, notification badge
+ * - worker:invited → Update worker list
+ * - worker:role-changed → Update sidebar and permissions
+ * - worker:session-terminated → User logged out on that device
+ * - worker:removed → User cannot access shop anymore
+ * - worker:reactivated → User can access shop again
  */
 
 const SOCKET_URL = import.meta.env.VITE_SOCKET_URL || 'http://localhost:5000';
@@ -51,6 +56,31 @@ export const useSocket = (shopId, callbacks = {}) => {
     socket.on('alert:new', (data) => {
       console.log('🔔 New alert:', data);
       callbacks.onAlertNew?.(data);
+    });
+
+    socket.on('worker:invited', (data) => {
+      console.log('👤 Worker invited:', data);
+      callbacks.onWorkerInvited?.(data);
+    });
+
+    socket.on('worker:role-changed', (data) => {
+      console.log('🔄 Worker role changed:', data);
+      callbacks.onWorkerRoleChanged?.(data);
+    });
+
+    socket.on('worker:session-terminated', (data) => {
+      console.log('🚪 Session terminated:', data);
+      callbacks.onSessionTerminated?.(data);
+    });
+
+    socket.on('worker:removed', (data) => {
+      console.log('🗑️ Worker removed:', data);
+      callbacks.onWorkerRemoved?.(data);
+    });
+
+    socket.on('worker:reactivated', (data) => {
+      console.log('✅ Worker reactivated:', data);
+      callbacks.onWorkerReactivated?.(data);
     });
 
     socket.on('disconnect', () => {

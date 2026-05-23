@@ -5,7 +5,29 @@ let io;
 const initializeSocket = (server) => {
   io = socketIO(server, {
     cors: {
-      origin: process.env.CLIENT_URL || 'http://localhost:5173',
+      origin: (origin, callback) => {
+        // Allow requests with no origin
+        if (!origin) return callback(null, true);
+
+        // In development, allow any localhost/127.0.0.1/192.168.x.x origin
+        if (process.env.NODE_ENV === 'development') {
+          if (
+            origin.startsWith('http://localhost:') ||
+            origin.startsWith('http://127.0.0.1:') ||
+            origin.startsWith('http://192.168.')
+          ) {
+            return callback(null, true);
+          }
+        }
+
+        // Production: check exact match
+        const allowedOrigin = process.env.CLIENT_URL || 'http://localhost:5173';
+        if (origin === allowedOrigin) {
+          return callback(null, true);
+        }
+
+        callback(new Error('Not allowed by CORS'));
+      },
       methods: ['GET', 'POST'],
       credentials: true,
     },

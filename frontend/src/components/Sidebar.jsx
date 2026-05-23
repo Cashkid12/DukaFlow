@@ -12,29 +12,37 @@ import {
   X
 } from 'lucide-react';
 import { UserButton, useUser } from '@clerk/clerk-react';
+import { useCurrentUser } from '../hooks/useCurrentUser';
+import { getSidebarItems, ROLES } from '../utils/permissions';
+
+const NAV_ICONS = {
+  dashboard: LayoutDashboard,
+  inventory: Package,
+  sales: ShoppingCart,
+  workers: Users,
+  reports: BarChart3,
+  settings: Settings,
+};
 
 const Sidebar = ({ isMobileOpen = false, onMobileClose }) => {
   const [isCollapsed, setIsCollapsed] = useState(false);
   const { user } = useUser();
-  
+  const { data: currentUser } = useCurrentUser();
+  const role = currentUser?.role || 'admin';
+
+  // Role-based navigation items
+  const navItems = useMemo(() => {
+    const items = getSidebarItems(role);
+    return items.map((item) => ({
+      ...item,
+      icon: NAV_ICONS[item.key] || LayoutDashboard,
+    }));
+  }, [role]);
+
   // Get shop name from onboarding data
   const shopName = useMemo(() => {
-    const onboardingData = localStorage.getItem('onboarding_step2');
-    if (onboardingData) {
-      const data = JSON.parse(onboardingData);
-      return data.shopName || 'Your Shop';
-    }
-    return 'Your Shop';
-  }, []);
-
-  const navItems = [
-    { icon: LayoutDashboard, label: 'Dashboard', path: '/dashboard' },
-    { icon: Package, label: 'Inventory', path: '/dashboard/inventory' },
-    { icon: ShoppingCart, label: 'Sales', path: '/dashboard/sales' },
-    { icon: Users, label: 'Workers', path: '/dashboard/workers' },
-    { icon: BarChart3, label: 'Reports', path: '/dashboard/reports' },
-    { icon: Settings, label: 'Settings', path: '/dashboard/settings' },
-  ];
+    return currentUser?.shop?.name || 'Your Shop';
+  }, [currentUser]);
 
   const sidebarContent = (
     <>
@@ -186,7 +194,7 @@ const Sidebar = ({ isMobileOpen = false, onMobileClose }) => {
               </p>
               <div className="flex items-center gap-2">
                 <div className="w-2 h-2 rounded-full bg-green-500" />
-                <p className="text-xs text-neutral-500">Admin • Online</p>
+                <p className="text-xs text-neutral-500 capitalize">{role} • Online</p>
               </div>
             </div>
           </div>

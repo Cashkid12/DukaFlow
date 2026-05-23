@@ -1,17 +1,21 @@
 import React, { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
-  Plus, Search, Filter, Grid, List, Package,
-  AlertCircle, X, ChevronDown, PackagePlus, Scan,
+  Search, Filter, Grid, List, Package,
+  AlertCircle, X, ChevronDown,
   Loader2,
 } from 'lucide-react';
 import { useInventoryQuery } from '../hooks/useInventoryQuery';
 import { useInventorySocket } from '../hooks/useInventorySocket';
+import { useFiltersQuery } from '../hooks/useFiltersQuery';
 import { useDebounce } from '../hooks/useDebounce';
 import { formatCurrency } from '../utils/formatters';
 import ProductCard from '../components/inventory/ProductCard';
 import RestockModal from '../components/inventory/RestockModal';
 import DeleteConfirmModal from '../components/inventory/DeleteConfirmModal';
+import AddProductDropdown from '../components/inventory/AddProductDropdown';
+import BarcodeComingSoonModal from '../components/inventory/BarcodeComingSoonModal';
+import CsvUploadModal from '../components/inventory/CsvUploadModal';
 
 /**
  * Returns a stock status badge config for a product.
@@ -45,6 +49,8 @@ const InventoryPage = () => {
   const [restockProduct, setRestockProduct] = useState(null);
   const [deleteProduct, setDeleteProduct] = useState(null);
   const [attrFilters, setAttrFilters] = useState({ size: '', color: '', brand: '' });
+  const [showBarcodeModal, setShowBarcodeModal] = useState(false);
+  const [showCsvModal, setShowCsvModal] = useState(false);
   const loadMoreRef = useRef(null);
 
   // --- Data ---
@@ -63,6 +69,9 @@ const InventoryPage = () => {
   // Socket.io real-time updates
   useInventorySocket(data?.shopId);
 
+  // Dynamic filters from backend
+  const { data: filtersData } = useFiltersQuery();
+
   const products = data?.products || [];
   const categories = data?.categories || [];
   const hasData = data?.hasData || false;
@@ -71,10 +80,24 @@ const InventoryPage = () => {
   const total = data?.total || 0;
   const availableFilters = data?.filters || { sizes: [], colors: [], brands: [] };
 
+  // Dynamic category counts from filters endpoint
+  const categoryCounts = useMemo(() => {
+    if (!filtersData?.categories?.length) return {};
+    const map = {};
+    filtersData.categories.forEach(c => { map[c.name] = c.count; });
+    return map;
+  }, [filtersData]);
+
+  // Dynamic attributes from filters endpoint
+  const dynamicAttributes = filtersData?.attributes || {};
+
   // Check if any filter is active
   const hasActiveFilters = selectedCategory !== 'all' ||
     selectedStockStatus !== 'all' ||
-    searchTerm.length > 0;
+    searchTerm.length > 0 ||
+    attrFilters.size ||
+    attrFilters.color ||
+    attrFilters.brand;
 
   const clearAllFilters = () => {
     setSearchTerm('');
@@ -82,6 +105,8 @@ const InventoryPage = () => {
     setSelectedStockStatus('all');
     setSortBy('createdAt');
     setSortOrder('desc');
+    setAttrFilters({ size: '', color: '', brand: '' });
+    setPage(1);
   };
 
   // ========================
@@ -176,13 +201,10 @@ const InventoryPage = () => {
           {/* Header */}
           <div className="flex items-center justify-between">
             <h1 className="text-2xl font-bold text-neutral-900">Inventory</h1>
-            <button
-              onClick={() => navigate('/inventory/add')}
-              className="flex items-center gap-2 px-5 py-2.5 bg-[#312E81] text-white rounded-xl hover:bg-[#1E1B4B] transition-colors text-sm font-semibold whitespace-nowrap"
-            >
-              <PackagePlus size={18} />
-              <span>Add Product</span>
-            </button>
+            <AddProductDropdown
+              onBarcodeClick={() => setShowBarcodeModal(true)}
+              onCsvClick={() => setShowCsvModal(true)}
+            />
           </div>
 
           {/* Filter bar (simplified) */}
@@ -234,18 +256,17 @@ const InventoryPage = () => {
             </p>
             <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 mt-7 w-full sm:w-auto px-4 sm:px-0">
               <button
-                onClick={() => navigate('/inventory/add')}
+                onClick={() => navigate('/dashboard/inventory/add')}
                 className="flex items-center justify-center gap-2 h-12 px-6 bg-[#312E81] text-white rounded-xl hover:bg-[#1E1B4B] transition-colors font-medium text-sm sm:w-auto w-full"
               >
-                <PackagePlus size={18} />
+                <Package size={18} />
                 <span>Add Your First Product</span>
               </button>
               <button
-                onClick={() => navigate('/inventory/add?scan=true')}
+                onClick={() => setShowBarcodeModal(true)}
                 className="flex items-center justify-center gap-2 h-12 px-6 border border-neutral-300 text-neutral-700 rounded-xl hover:bg-neutral-50 transition-colors font-medium text-sm sm:w-auto w-full"
               >
-                <Scan size={18} />
-                <span>Scan Barcode</span>
+                <span>📷 Scan Barcode</span>
               </button>
             </div>
             <a href="#" className="text-sm text-[#312E81] hover:underline mt-5 font-medium">
@@ -255,11 +276,11 @@ const InventoryPage = () => {
 
           {/* FAB */}
           <button
-            onClick={() => navigate('/inventory/add')}
+            onClick={() => navigate('/dashboard/inventory/add')}
             className="fixed md:bottom-6 md:right-6 bottom-20 right-4 w-14 h-14 rounded-2xl bg-[#312E81] text-white shadow-lg hover:bg-[#1E1B4B] hover:scale-105 hover:shadow-xl transition-all duration-200 flex items-center justify-center z-40"
             aria-label="Add product"
           >
-            <Plus size={24} />
+            <Package size={24} />
           </button>
         </div>
       </div>
@@ -276,13 +297,10 @@ const InventoryPage = () => {
           {/* Header */}
           <div className="flex items-center justify-between">
             <h1 className="text-2xl font-bold text-neutral-900">Inventory</h1>
-            <button
-              onClick={() => navigate('/inventory/add')}
-              className="flex items-center gap-2 px-5 py-2.5 bg-[#312E81] text-white rounded-xl hover:bg-[#1E1B4B] transition-colors text-sm font-semibold whitespace-nowrap"
-            >
-              <PackagePlus size={18} />
-              <span>Add Product</span>
-            </button>
+            <AddProductDropdown
+              onBarcodeClick={() => setShowBarcodeModal(true)}
+              onCsvClick={() => setShowCsvModal(true)}
+            />
           </div>
 
           {/* Filter bar (simplified) */}
@@ -321,11 +339,11 @@ const InventoryPage = () => {
 
           {/* FAB */}
           <button
-            onClick={() => navigate('/inventory/add')}
+            onClick={() => navigate('/dashboard/inventory/add')}
             className="fixed md:bottom-6 md:right-6 bottom-20 right-4 w-14 h-14 rounded-2xl bg-[#312E81] text-white shadow-lg hover:bg-[#1E1B4B] hover:scale-105 hover:shadow-xl transition-all duration-200 flex items-center justify-center z-40"
             aria-label="Add product"
           >
-            <Plus size={24} />
+            <Package size={24} />
           </button>
         </div>
       </div>
@@ -347,21 +365,10 @@ const InventoryPage = () => {
             </p>
           </div>
           <div className="flex gap-2">
-            <button
-              onClick={() => navigate('/inventory/add?scan=true')}
-              className="flex items-center gap-2 px-4 py-2.5 border border-neutral-300 text-neutral-700 rounded-xl hover:bg-neutral-50 transition-colors text-sm font-medium whitespace-nowrap"
-              title="Scan barcode"
-            >
-              <Scan size={18} />
-              <span className="hidden sm:inline">Scan</span>
-            </button>
-            <button
-              onClick={() => navigate('/inventory/add')}
-              className="flex items-center gap-2 px-5 py-2.5 bg-[#312E81] text-white rounded-xl hover:bg-[#1E1B4B] transition-colors text-sm font-semibold whitespace-nowrap"
-            >
-              <PackagePlus size={18} />
-              <span>Add Product</span>
-            </button>
+            <AddProductDropdown
+              onBarcodeClick={() => setShowBarcodeModal(true)}
+              onCsvClick={() => setShowCsvModal(true)}
+            />
           </div>
         </div>
 
@@ -453,21 +460,24 @@ const InventoryPage = () => {
                   : 'bg-white border border-neutral-300 text-neutral-700 hover:border-[#312E81] hover:bg-[#EEF2FF]'
               }`}
             >
-              All
+              All{total > 0 ? ` (${total})` : ''}
             </button>
-            {categories.map((cat) => (
-              <button
-                key={cat}
-                onClick={() => { setSelectedCategory(cat); setPage(1); }}
-                className={`sm:px-4 sm:py-2 sm:text-sm px-3 py-1.5 text-[13px] rounded-full font-medium whitespace-nowrap transition-all duration-150 ${
-                  selectedCategory === cat
-                    ? 'bg-[#312E81] text-white'
-                    : 'bg-white border border-neutral-300 text-neutral-700 hover:border-[#312E81] hover:bg-[#EEF2FF]'
-                }`}
-              >
-                {cat}
-              </button>
-            ))}
+            {categories.map((cat) => {
+              const count = categoryCounts[cat];
+              return (
+                <button
+                  key={cat}
+                  onClick={() => { setSelectedCategory(cat); setPage(1); }}
+                  className={`sm:px-4 sm:py-2 sm:text-sm px-3 py-1.5 text-[13px] rounded-full font-medium whitespace-nowrap transition-all duration-150 ${
+                    selectedCategory === cat
+                      ? 'bg-[#312E81] text-white'
+                      : 'bg-white border border-neutral-300 text-neutral-700 hover:border-[#312E81] hover:bg-[#EEF2FF]'
+                  }`}
+                >
+                  {cat}{count !== undefined ? ` (${count})` : ''}
+                </button>
+              );
+            })}
           </div>
 
           {/* Stock status pills */}
@@ -492,54 +502,29 @@ const InventoryPage = () => {
             ))}
           </div>
 
-          {/* Attribute filter dropdowns */}
-          {(availableFilters.sizes?.length > 0 || availableFilters.colors?.length > 0 || availableFilters.brands?.length > 0) && (
+          {/* Attribute filter dropdowns — dynamically generated */}
+          {Object.keys(dynamicAttributes).length > 0 && (
             <div className="flex gap-2 overflow-x-auto px-4 mt-2 scrollbar-none">
-              {availableFilters.sizes?.length > 0 && (
-                <div className="relative">
-                  <select
-                    value={attrFilters.size}
-                    onChange={(e) => { setAttrFilters(prev => ({ ...prev, size: e.target.value })); setPage(1); }}
-                    className="appearance-none pl-3 pr-8 py-1.5 border border-[#CBD5E1] rounded-full text-xs cursor-pointer hover:bg-neutral-50 outline-none bg-white text-[#64748B]"
-                  >
-                    <option value="">Size: All</option>
-                    {availableFilters.sizes.map((s) => (
-                      <option key={s} value={s}>{s}</option>
-                    ))}
-                  </select>
-                  <ChevronDown size={10} className="absolute right-2 top-1/2 -translate-y-1/2 text-neutral-400 pointer-events-none" />
-                </div>
-              )}
-              {availableFilters.colors?.length > 0 && (
-                <div className="relative">
-                  <select
-                    value={attrFilters.color}
-                    onChange={(e) => { setAttrFilters(prev => ({ ...prev, color: e.target.value })); setPage(1); }}
-                    className="appearance-none pl-3 pr-8 py-1.5 border border-[#CBD5E1] rounded-full text-xs cursor-pointer hover:bg-neutral-50 outline-none bg-white text-[#64748B]"
-                  >
-                    <option value="">Color: All</option>
-                    {availableFilters.colors.map((c) => (
-                      <option key={c} value={c}>{c}</option>
-                    ))}
-                  </select>
-                  <ChevronDown size={10} className="absolute right-2 top-1/2 -translate-y-1/2 text-neutral-400 pointer-events-none" />
-                </div>
-              )}
-              {availableFilters.brands?.length > 0 && (
-                <div className="relative">
-                  <select
-                    value={attrFilters.brand}
-                    onChange={(e) => { setAttrFilters(prev => ({ ...prev, brand: e.target.value })); setPage(1); }}
-                    className="appearance-none pl-3 pr-8 py-1.5 border border-[#CBD5E1] rounded-full text-xs cursor-pointer hover:bg-neutral-50 outline-none bg-white text-[#64748B]"
-                  >
-                    <option value="">Brand: All</option>
-                    {availableFilters.brands.map((b) => (
-                      <option key={b} value={b}>{b}</option>
-                    ))}
-                  </select>
-                  <ChevronDown size={10} className="absolute right-2 top-1/2 -translate-y-1/2 text-neutral-400 pointer-events-none" />
-                </div>
-              )}
+              {Object.entries(dynamicAttributes).map(([attrKey, attrValues]) => {
+                if (!attrValues || attrValues.length === 0) return null;
+                const label = attrKey.charAt(0).toUpperCase() + attrKey.slice(1);
+                const filterKey = attrKey === 'size' ? 'size' : attrKey === 'color' ? 'color' : attrKey === 'brand' ? 'brand' : attrKey;
+                return (
+                  <div key={attrKey} className="relative">
+                    <select
+                      value={attrFilters[filterKey] || ''}
+                      onChange={(e) => { setAttrFilters(prev => ({ ...prev, [filterKey]: e.target.value })); setPage(1); }}
+                      className="appearance-none pl-3 pr-8 py-1.5 border border-[#CBD5E1] rounded-lg text-[13px] cursor-pointer hover:bg-neutral-50 hover:border-[#312E81] focus:border-[#312E81] focus:ring-2 focus:ring-[#312E81]/10 outline-none bg-white text-neutral-700"
+                    >
+                      <option value="">{label}: All</option>
+                      {attrValues.map((v) => (
+                        <option key={v} value={v}>{v}</option>
+                      ))}
+                    </select>
+                    <ChevronDown size={14} className="absolute right-2 top-1/2 -translate-y-1/2 text-neutral-400 pointer-events-none" />
+                  </div>
+                );
+              })}
             </div>
           )}
         </div>
@@ -614,7 +599,7 @@ const InventoryPage = () => {
                 product={product}
                 onEdit={(p) => navigate(`/inventory/${p._id}`)}
                 onRestock={setRestockProduct}
-                onDuplicate={(p) => navigate(`/inventory/add?duplicate=${p._id}`)}
+                onDuplicate={(p) => navigate(`/dashboard/inventory/add?duplicate=${p._id}`)}
                 onDelete={setDeleteProduct}
               />
             ))}
@@ -738,7 +723,7 @@ const InventoryPage = () => {
 
         {/* FAB */}
         <button
-          onClick={() => navigate('/inventory/add')}
+          onClick={() => navigate('/dashboard/inventory/add')}
           className="fixed md:bottom-6 md:right-6 bottom-20 right-4 w-14 h-14 rounded-2xl bg-[#312E81] text-white shadow-lg hover:bg-[#1E1B4B] hover:scale-105 hover:shadow-xl transition-all duration-200 flex items-center justify-center z-40"
           aria-label="Add product"
         >
@@ -762,10 +747,28 @@ const InventoryPage = () => {
       {deleteProduct && (
         <DeleteConfirmModal
           product={deleteProduct}
-          onClose={() => setDeleteProduct(null)}
+          onClose={() => setDeleteProduct(null)
+             
+          }
           onConfirm={(product) => {
             console.log('Delete:', product._id);
             setDeleteProduct(null);
+          }}
+        />
+      )}
+
+      {/* Barcode Coming Soon Modal */}
+      {showBarcodeModal && (
+        <BarcodeComingSoonModal onClose={() => setShowBarcodeModal(false)} />
+      )}
+
+      {/* CSV Upload Modal */}
+      {showCsvModal && (
+        <CsvUploadModal
+          onClose={() => setShowCsvModal(false)}
+          onImportComplete={() => {
+            setShowCsvModal(false);
+            refetch();
           }}
         />
       )}

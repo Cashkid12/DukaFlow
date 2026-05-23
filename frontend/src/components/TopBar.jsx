@@ -1,19 +1,27 @@
-import React, { useState, useMemo } from 'react';
-import { Bell, Search, Calendar, MessageCircle, ChevronDown, Menu } from 'lucide-react';
+import React, { useState } from 'react';
+import { Bell, Search, Calendar, MessageCircle, Menu } from 'lucide-react';
 import { UserButton } from '@clerk/clerk-react';
+import { useCurrentUser } from '../hooks/useCurrentUser';
+import { ROLES } from '../utils/permissions';
+import BranchSwitcher from './BranchSwitcher';
+import { useBranch } from '../context/BranchContext';
+
+const ROLE_BADGE = {
+  admin: { label: 'Admin', bg: '#EEF2FF', color: '#312E81' },
+  manager: { label: 'Manager', bg: '#EEF2FF', color: '#312E81' },
+  cashier: { label: 'Cashier', bg: '#FEF3C7', color: '#D97706' },
+};
 
 const TopBar = ({ onMenuToggle }) => {
   const [showDatePicker, setShowDatePicker] = useState(false);
-  
-  // Get shop name from onboarding data
-  const shopName = useMemo(() => {
-    const onboardingData = localStorage.getItem('onboarding_step2');
-    if (onboardingData) {
-      const data = JSON.parse(onboardingData);
-      return data.shopName || 'Your Shop';
-    }
-    return 'Your Shop';
-  }, []);
+  const { data: currentUser } = useCurrentUser();
+  const { activeBranch, hasMultiBranch } = useBranch();
+  const role = currentUser?.role || 'admin';
+  const roleBadge = ROLE_BADGE[role] || ROLE_BADGE.admin;
+
+  const branchLabel = hasMultiBranch && activeBranch
+    ? (activeBranch.isMain ? 'Main Branch' : activeBranch.name)
+    : 'Main Branch';
 
   const today = new Date();
   const formattedDate = today.toLocaleDateString('en-US', {
@@ -38,19 +46,20 @@ const TopBar = ({ onMenuToggle }) => {
             <Menu size={20} style={{ color: '#6B7280' }} />
           </button>
 
-          {/* Desktop: Shop Name */}
+          {/* Desktop: Shop Name + Branch Switcher */}
           <div className="hidden lg:flex items-center gap-2">
-            <h2 className="text-lg font-semibold text-neutral-900">{shopName}</h2>
-            <ChevronDown size={16} style={{ color: '#6B7280' }} className="cursor-pointer" />
+            <BranchSwitcher />
           </div>
 
-          {/* Mobile: Centered Shop Name */}
-          <h2 className="lg:hidden text-base font-semibold text-neutral-900">{shopName}</h2>
+          {/* Mobile: Shop Name + Branch Switcher */}
+          <div className="lg:hidden flex items-center gap-1.5 min-w-0">
+            <BranchSwitcher />
+          </div>
 
           {/* Desktop: Online Status */}
           <div className="hidden lg:flex items-center gap-2">
             <div className="w-2 h-2 rounded-full bg-green-500" />
-            <span className="text-xs text-neutral-500">Main Branch</span>
+            <span className="text-xs text-neutral-500">{branchLabel}</span>
           </div>
         </div>
 
@@ -105,6 +114,14 @@ const TopBar = ({ onMenuToggle }) => {
 
           {/* Divider */}
           <div className="w-px h-8 bg-neutral-200" />
+
+          {/* Role Badge */}
+          <span
+            className="hidden sm:inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium"
+            style={{ backgroundColor: roleBadge.bg, color: roleBadge.color }}
+          >
+            {roleBadge.label}
+          </span>
 
           {/* User Avatar */}
           <UserButton 

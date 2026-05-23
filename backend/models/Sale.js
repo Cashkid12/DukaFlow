@@ -69,16 +69,29 @@ const saleSchema = new mongoose.Schema({
   },
   customerName: String,
   customerPhone: String,
+  dueDate: Date,
+  paymentDetails: {
+    mpesaCode: String,
+    phone: String,
+  },
+  paidAt: Date,
+  paymentHistory: [{
+    date: { type: Date, default: Date.now },
+    amount: Number,
+    method: { type: String, enum: ['cash', 'mpesa'] },
+    notes: String,
+    recordedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+  }],
   notes: String,
 }, {
   timestamps: true,
 });
 
-// Auto-generate sale number and calculate profit
+// Auto-generate sale number
 saleSchema.pre('save', async function(next) {
   if (!this.saleNumber) {
-    const count = await mongoose.model('Sale').countDocuments();
-    this.saleNumber = `SAL${String(count + 1).padStart(5, '0')}`;
+    const count = await mongoose.model('Sale').countDocuments({ shop: this.shop });
+    this.saleNumber = `INV-${String(count + 1).padStart(5, '0')}`;
   }
 
   // Calculate total profit from items

@@ -1,4 +1,28 @@
-import api from './api';
+import axios from 'axios';
+
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+
+const api = axios.create({
+  baseURL: API_BASE_URL,
+  headers: {
+    'Content-Type': 'application/json',
+  },
+});
+
+// Attach Clerk session token to every request
+api.interceptors.request.use(async (config) => {
+  try {
+    if (window.Clerk?.session) {
+      const token = await window.Clerk.session.getToken();
+      if (token) {
+        config.headers.Authorization = `Bearer ${token}`;
+      }
+    }
+  } catch {
+    // Clerk not available yet — continue without token
+  }
+  return config;
+});
 
 // Auth service
 export const authService = {
@@ -167,8 +191,8 @@ export const reportService = {
   },
 
   // Get weekly report
-  getWeeklyReport: async () => {
-    const response = await api.get('/reports/weekly');
+  getWeeklyReport: async (startDate, endDate) => {
+    const response = await api.get('/reports/weekly', { params: { startDate, endDate } });
     return response.data;
   },
 
@@ -178,15 +202,39 @@ export const reportService = {
     return response.data;
   },
 
+  // Email report
+  emailReport: async (payload) => {
+    const response = await api.post('/reports/email', payload);
+    return response.data;
+  },
+
+  // Export PDF
+  exportReport: async (type, date, month, year) => {
+    const response = await api.get('/reports/export', { params: { type, date, month, year }, responseType: 'blob' });
+    return response.data;
+  },
+
   // Get products report
   getProductsReport: async (params = {}) => {
     const response = await api.get('/reports/products', { params });
     return response.data;
   },
 
+  // Get single product report
+  getSingleProductReport: async (id) => {
+    const response = await api.get(`/reports/products/${id}`);
+    return response.data;
+  },
+
   // Get workers report
-  getWorkersReport: async () => {
-    const response = await api.get('/reports/workers');
+  getWorkersReport: async (params = {}) => {
+    const response = await api.get('/reports/workers', { params });
+    return response.data;
+  },
+
+  // Get single worker report
+  getSingleWorkerReport: async (id) => {
+    const response = await api.get(`/reports/workers/${id}`);
     return response.data;
   },
 };
@@ -251,17 +299,50 @@ export const dashboardService = {
   },
 };
 
+// Branches service
+export const branchService = {
+  // Get all branches
+  getBranches: async () => {
+    const response = await api.get('/branches');
+    return response.data;
+  },
+
+  // Switch active branch
+  switchBranch: async (branchId) => {
+    const response = await api.post(`/branches/${branchId}/switch`);
+    return response.data;
+  },
+
+  // Get branch statistics
+  getBranchStats: async (branchId) => {
+    const response = await api.get(`/branches/${branchId}/stats`);
+    return response.data;
+  },
+};
+
 // Settings service
 export const settingsService = {
-  // Get shop profile
-  getShopProfile: async () => {
-    const response = await api.get('/settings/shop');
+  // Get full shop settings
+  getSettings: async () => {
+    const response = await api.get('/settings');
     return response.data;
   },
 
   // Update shop profile
-  updateShopProfile: async (shopData) => {
-    const response = await api.put('/settings/shop', shopData);
+  updateProfile: async (profileData) => {
+    const response = await api.put('/settings/profile', profileData);
+    return response.data;
+  },
+
+  // Update categories
+  updateCategories: async (categories) => {
+    const response = await api.put('/settings/categories', { categories });
+    return response.data;
+  },
+
+  // Update attributes
+  updateAttributes: async (attributes) => {
+    const response = await api.put('/settings/attributes', { attributes });
     return response.data;
   },
 
@@ -271,9 +352,47 @@ export const settingsService = {
     return response.data;
   },
 
-  // Update billing
-  updateBilling: async (billingData) => {
-    const response = await api.put('/settings/billing', billingData);
+  // Change plan
+  changePlan: async (plan) => {
+    const response = await api.post('/settings/billing/change-plan', { plan });
+    return response.data;
+  },
+
+  // Update payment method
+  updatePayment: async (paymentData) => {
+    const response = await api.put('/settings/billing/payment', paymentData);
+    return response.data;
+  },
+
+  // Get invoices
+  getInvoices: async () => {
+    const response = await api.get('/settings/billing/invoices');
+    return response.data;
+  },
+
+  // Manage multi-branch (toggle/add/update/delete)
+  manageMultiBranch: async (actionData) => {
+    const response = await api.post('/settings/multi-branch', actionData);
+    return response.data;
+  },
+
+  // Export data
+  exportData: async (exportConfig) => {
+    const response = await api.post('/settings/export', exportConfig, {
+      responseType: exportConfig.type ? 'blob' : 'json',
+    });
+    return response.data;
+  },
+
+  // Update notification preferences
+  updateNotifications: async (prefs) => {
+    const response = await api.put('/settings/notifications', prefs);
+    return response.data;
+  },
+
+  // Delete account
+  deleteAccount: async () => {
+    const response = await api.delete('/settings/delete-account');
     return response.data;
   },
 };

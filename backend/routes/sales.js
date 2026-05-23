@@ -1,18 +1,20 @@
 const express = require('express');
 const router = express.Router();
 const { clerkAuth } = require('../middleware/clerkAuth');
+const { createSale, getSales, getSale, markAsPaid, exportSales, getCreditCustomers } = require('../controllers/saleController');
 
-// Placeholder routes - implement as needed
-router.get('/', clerkAuth, (req, res) => {
-  res.json({ success: true, message: 'Get all sales' });
-});
+// All routes are protected with Clerk auth
+router.use(clerkAuth);
 
-router.post('/', clerkAuth, (req, res) => {
-  res.json({ success: true, message: 'Create sale' });
-});
+router.route('/')
+  .get(getSales)
+  .post(createSale);
 
-router.get('/:id', clerkAuth, (req, res) => {
-  res.json({ success: true, message: 'Get single sale' });
-});
+// Export and customers MUST come before /:id routes
+router.get('/export', exportSales);
+router.get('/customers', getCreditCustomers);
+
+router.get('/:id', getSale);
+router.put('/:id/pay', markAsPaid);
 
 module.exports = router;

@@ -1,15 +1,24 @@
 import React from 'react';
 import { NavLink } from 'react-router-dom';
 import { LayoutDashboard, Package, ShoppingCart, BarChart3, Menu } from 'lucide-react';
+import { useCurrentUser } from '../hooks/useCurrentUser';
+import { getMobileNavItems } from '../utils/permissions';
+
+const NAV_ICONS = {
+  home: LayoutDashboard,
+  inventory: Package,
+  sales: ShoppingCart,
+  reports: BarChart3,
+  menu: Menu,
+};
 
 const MobileNav = () => {
-  const navItems = [
-    { icon: LayoutDashboard, label: 'Home', path: '/dashboard' },
-    { icon: Package, label: 'Inventory', path: '/dashboard/inventory' },
-    { icon: ShoppingCart, label: 'Sales', path: '/dashboard/sales' },
-    { icon: BarChart3, label: 'Reports', path: '/dashboard/reports' },
-    { icon: Menu, label: 'Menu', path: '/dashboard/settings' },
-  ];
+  const { data: currentUser } = useCurrentUser();
+  const role = currentUser?.role || 'admin';
+  const navItems = getMobileNavItems(role).map((item) => ({
+    ...item,
+    icon: NAV_ICONS[item.key] || LayoutDashboard,
+  }));
 
   return (
     <nav 

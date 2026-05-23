@@ -34,11 +34,13 @@ exports.clerkAuth = async (req, res, next) => {
     // Verify token with Clerk
     let session;
     try {
+      console.log('🔑 Verifying token, secretKey present:', !!process.env.CLERK_SECRET_KEY, 'token length:', token.length);
       session = await clerk.verifyToken(token, {
         secretKey: process.env.CLERK_SECRET_KEY,
       });
     } catch (error) {
       console.error('❌ Token verification failed:', error.message);
+      console.error('   Error details:', error.status || error.code || 'no extra detail');
       return res.status(401).json({ 
         error: 'Invalid or expired token',
         message: 'Please sign in again'
@@ -57,13 +59,35 @@ exports.clerkAuth = async (req, res, next) => {
 
     // Find user in MongoDB
     const User = require('../models/User');
-    const user = await User.findOne({ clerkId, isActive: true, isDeleted: false });
+    let user = await User.findOne({ clerkId, isActive: true, isDeleted: false });
 
     if (!user) {
-      return res.status(401).json({ 
-        error: 'User not found',
-        message: 'User does not exist in database'
+      // Check if user exists but is inactive/deleted
+      const userAny = await User.findOne({ clerkId });
+      if (userAny) {
+        console.log(`🔎 User exists but inactive/deleted: ${userAny.email} (active=${userAny.isActive}, deleted=${userAny.isDeleted})`);
+        return res.status(401).json({ 
+          error: 'Account disabled',
+          message: 'Your account has been deactivated'
+        });
+      }
+
+      // Auto-create user from Clerk data (webhook may not be configured yet)
+      const email = session.email || session.emailAddresses?.[0]?.email_address;
+      const fullName = [session.firstName, session.lastName].filter(Boolean).join(' ') || 'DukaFlow User';
+      
+      console.log(`🆕 Auto-creating user: ${fullName} (${email})`);
+      user = await User.create({
+        clerkId,
+        fullName,
+        email: email || `${clerkId}@clerk.user`,
+        avatar: session.imageUrl,
+        role: 'admin',
+        status: 'online',
+        isActive: true,
+        isDeleted: false,
       });
+      console.log(`✅ User auto-created: ${user._id}`);
     }
 
     // Attach user context to request
@@ -79,6 +103,59 @@ exports.clerkAuth = async (req, res, next) => {
     req.user = user;
     req.userId = user._id;
     req.shopId = user.shop; // May be null if not completed onboarding
+
+    // Auto-recover: if admin user has no shop linked, find it by ownership
+    if (!user.shop && user.role === 'admin') {
+      try {
+        const Shop = require('../models/Shop');
+        const shop = await Shop.findOne({ owner: user._id });
+        if (shop) {
+          user.shop = shop._id;
+          await user.save();
+          req.shopId = shop._id;
+          console.log(`🔗 Auto-linked shop ${shop._id} to user ${user.email}`);
+        }
+      } catch (err) {
+        console.error('⚠️ Auto-link shop error:', err.message);
+      }
+    }
+
+    // ── Session tracking ──────────────────────────────────────────
+    const now = new Date();
+    const userAgent = req.headers['user-agent'] || '';
+    const browser = userAgent.includes('Firefox') ? 'Firefox'
+      : userAgent.includes('Edg') ? 'Edge'
+      : userAgent.includes('Chrome') ? 'Chrome'
+      : userAgent.includes('Safari') ? 'Safari'
+      : 'Unknown';
+    const device = userAgent.includes('Mobile') ? 'Mobile'
+      : userAgent.includes('Tablet') ? 'Tablet'
+      : 'Desktop';
+    const ip = req.headers['x-forwarded-for']?.split(',')[0]?.trim() || req.ip || 'Unknown';
+
+    // Update lastLogin and merge session
+    user.lastLogin = now;
+    user.status = 'online';
+
+    // Deduplicate session by sessionId — remove old entry for same session, then push
+    user.activeSessions = (user.activeSessions || []).filter(
+      (s) => s.sessionId !== session.sid
+    );
+    user.activeSessions.push({
+      sessionId: session.sid,
+      device,
+      browser,
+      ip,
+      loginAt: now,
+    });
+
+    // Keep max 10 sessions
+    if (user.activeSessions.length > 10) {
+      user.activeSessions = user.activeSessions.slice(-10);
+    }
+
+    await user.save();
+    // ── End session tracking ──────────────────────────────────────
 
     // Proceed to next middleware/route
     next();

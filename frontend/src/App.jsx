@@ -6,12 +6,17 @@ import LandingPage from './pages/LandingPage';
 import SignIn from './pages/SignIn';
 import SignUp from './pages/SignUp';
 import TestOnboarding from './pages/TestOnboarding';
-import OnboardingShopName from './pages/onboarding/OnboardingShopName';
-import OnboardingBusinessType from './pages/onboarding/OnboardingBusinessType';
+import OnboardingPage from './pages/OnboardingPage';
 import DashboardLayout from './components/DashboardLayout';
+import { BranchProvider } from './context/BranchContext';
 import DashboardOverview from './pages/DashboardOverview';
 import InventoryPage from './pages/InventoryPage';
+import AddProductPage from './pages/AddProductPage';
+import ProductDetailPage from './pages/ProductDetailPage';
 import SalesPage from './pages/SalesPage';
+import WorkersPage from './pages/WorkersPage';
+import WorkerDetailPage from './pages/WorkerDetailPage';
+import ReportsPage from './pages/ReportsPage';
 import SettingsPage from './pages/SettingsPage';
 import SuperAdminPanel from './pages/SuperAdminPanel';
 
@@ -45,28 +50,14 @@ function App() {
         {/* Super Admin Panel */}
         <Route path="/admin" element={<SuperAdminPanel />} />
 
-        {/* Onboarding Routes - Post-Signup, First-time only */}
-        <Route
-          path="/onboarding/shop-name"
-          element={
-            <SignedIn>
-              <OnboardingShopName />
-            </SignedIn>
-          }
-        />
-        <Route
-          path="/onboarding/business-type"
-          element={
-            <SignedIn>
-              <OnboardingBusinessType />
-            </SignedIn>
-          }
-        />
-
-        {/* Redirect old onboarding path */}
+        {/* Onboarding Route — Post-Signup, First-time only */}
         <Route
           path="/onboarding"
-          element={<Navigate to="/onboarding/shop-name" replace />}
+          element={
+            <SignedIn>
+              <OnboardingPage />
+            </SignedIn>
+          }
         />
 
         {/* Protected Dashboard Routes */}
@@ -74,15 +65,20 @@ function App() {
           path="/dashboard"
           element={
             <SignedIn>
-              <DashboardLayout />
+              <BranchProvider>
+                <DashboardLayout />
+              </BranchProvider>
             </SignedIn>
           }
         >
           <Route index element={<DashboardOverview />} />
           <Route path="inventory" element={<InventoryPage />} />
+          <Route path="inventory/add" element={<AddProductPage />} />
+          <Route path="inventory/:productId" element={<ProductDetailPage />} />
           <Route path="sales" element={<SalesPage />} />
-          <Route path="workers" element={<div className="p-6"><h1 className="h2">Workers Management</h1><p className="text-neutral-600 mt-2">Coming soon...</p></div>} />
-          <Route path="reports" element={<div className="p-6"><h1 className="h2">Reports</h1><p className="text-neutral-600 mt-2">Coming soon...</p></div>} />
+          <Route path="workers" element={<WorkersPage />} />
+          <Route path="workers/:workerId" element={<WorkerDetailPage />} />
+          <Route path="reports" element={<ReportsPage />} />
           <Route path="notifications" element={<div className="p-6"><h1 className="h2">Notifications</h1><p className="text-neutral-600 mt-2">Coming soon...</p></div>} />
           <Route path="settings" element={<SettingsPage />} />
         </Route>

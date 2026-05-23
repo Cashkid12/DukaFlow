@@ -18,6 +18,11 @@ const productRoutes = require('./routes/products');
 const salesRoutes = require('./routes/sales');
 const clerkRoutes = require('./routes/clerk');
 const dashboardRoutes = require('./routes/dashboard');
+const workerRoutes = require('./routes/workers');
+const shopRoutes = require('./routes/shop');
+const reportRoutes = require('./routes/reports');
+const settingsRoutes = require('./routes/settings');
+const branchRoutes = require('./routes/branches');
 
 // Initialize Express app
 const app = express();
@@ -30,8 +35,31 @@ const io = initializeSocket(server);
 initializeCronJobs();
 
 // Middleware
+// CORS: allow localhost (any port), 127.0.0.1, and local network IPs in development
+const allowedOrigin = process.env.CLIENT_URL || 'http://localhost:5173';
 app.use(cors({
-  origin: process.env.CLIENT_URL || 'http://localhost:5173',
+  origin: (origin, callback) => {
+    // Allow requests with no origin (server-to-server, mobile apps, curl)
+    if (!origin) return callback(null, true);
+
+    // In development, allow any localhost/127.0.0.1/192.168.x.x origin
+    if (process.env.NODE_ENV === 'development') {
+      if (
+        origin.startsWith('http://localhost:') ||
+        origin.startsWith('http://127.0.0.1:') ||
+        origin.startsWith('http://192.168.')
+      ) {
+        return callback(null, true);
+      }
+    }
+
+    // In production, check exact match
+    if (origin === allowedOrigin) {
+      return callback(null, true);
+    }
+
+    callback(new Error('Not allowed by CORS'));
+  },
   credentials: true,
 }));
 app.use(express.json());
@@ -47,6 +75,11 @@ app.use('/api/products', productRoutes);
 app.use('/api/sales', salesRoutes);
 app.use('/api/clerk', clerkRoutes);
 app.use('/api/dashboard', dashboardRoutes);
+app.use('/api/workers', workerRoutes);
+app.use('/api/shop', shopRoutes);
+app.use('/api/reports', reportRoutes);
+app.use('/api/settings', settingsRoutes);
+app.use('/api/branches', branchRoutes);
 
 // Health check route
 app.get('/api/health', (req, res) => {

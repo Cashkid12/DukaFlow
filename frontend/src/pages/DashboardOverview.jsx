@@ -11,11 +11,19 @@ import { useDashboardQuery } from '../hooks/useDashboardQuery';
 import { useSocket } from '../hooks/useSocket';
 import { DashboardSkeleton } from '../components/Skeleton';
 import { formatCurrency } from '../utils/formatters';
+import { useCurrentUser } from '../hooks/useCurrentUser';
+import { canViewProfit, canViewWorkers, ROLES } from '../utils/permissions';
 
 const DashboardOverview = () => {
   const [fabOpen, setFabOpen] = useState(false);
   const { data, isLoading, isError, error, invalidate, refetch } = useDashboardQuery();
   const { user } = useUser();
+  const { data: currentUser } = useCurrentUser();
+  const role = currentUser?.role || ROLES.ADMIN;
+  const isCashier = role === ROLES.CASHIER;
+  const isManager = role === ROLES.MANAGER;
+  const showProfit = canViewProfit(role);
+  const showWorkers = canViewWorkers(role);
   const firstName = user?.firstName || '';
 
   // ── Socket.io real-time updates ──────────────────────────────
@@ -154,6 +162,7 @@ const DashboardOverview = () => {
               <Plus size={18} />
               Add Your First Product
             </button>
+            {role === ROLES.ADMIN && (
             <button
               onClick={() => window.location.href = '/dashboard/workers'}
               className="flex items-center justify-center gap-2 px-5 py-3 bg-white/20 text-white font-semibold rounded-xl hover:bg-white/30 transition-all text-sm border border-white/30"
@@ -161,6 +170,7 @@ const DashboardOverview = () => {
               <UserPlus size={18} />
               Invite Workers
             </button>
+            )}
           </div>
         </div>
 
@@ -183,6 +193,7 @@ const DashboardOverview = () => {
                 <Package size={18} />
                 Add Your First Product
               </button>
+              {role === ROLES.ADMIN && (
               <button
                 onClick={() => window.location.href = '/dashboard/workers'}
                 className="flex items-center justify-center gap-2 px-5 py-3 bg-white border-[1.5px] border-neutral-300 text-neutral-700 font-semibold rounded-xl hover:bg-neutral-50 transition-all text-sm w-full sm:w-auto"
@@ -190,6 +201,7 @@ const DashboardOverview = () => {
                 <Users size={18} />
                 Invite Workers
               </button>
+              )}
             </div>
             <a
               href="#"
@@ -220,7 +232,8 @@ const DashboardOverview = () => {
             </div>
           </div>
 
-          {/* Today's Profit */}
+          {/* Today's Profit — hidden for cashiers */}
+          {showProfit && (
           <div
             className="bg-white rounded-xl border border-neutral-100 p-4 sm:p-5"
             style={{
@@ -231,7 +244,7 @@ const DashboardOverview = () => {
             <div className="flex items-start justify-between mb-3">
               <div>
                 <p className="text-xs font-medium text-neutral-500 uppercase tracking-wide">Today&apos;s Profit</p>
-                <p className="text-2xl font-bold mt-1 text-neutral-400">KSh 0</p>
+                <p className="text-2xl font-bold mt-1 text-neutral-400">{isManager ? '—' : 'KSh 0'}</p>
               </div>
               <div className="w-10 h-10 rounded-lg flex items-center justify-center" style={{ backgroundColor: '#FFF7ED' }}>
                 <DollarSign size={20} style={{ color: '#E8835C' }} />
@@ -242,6 +255,7 @@ const DashboardOverview = () => {
               <span className="text-xs text-neutral-500">vs yesterday</span>
             </div>
           </div>
+          )}
 
           {/* Low Stock */}
           <div className="bg-white rounded-xl border border-neutral-100 p-4 sm:p-5">
@@ -334,7 +348,7 @@ const DashboardOverview = () => {
         <div className="bg-white rounded-xl border border-neutral-100 p-5 hover:shadow-md hover:-translate-y-0.5 transition-all duration-200">
           <div className="flex items-start justify-between mb-3">
             <div>
-              <p className="text-[13px] font-medium text-neutral-500 uppercase tracking-wide">Today&apos;s Sales</p>
+              <p className="text-[13px] font-medium text-neutral-500 uppercase tracking-wide">{isCashier ? 'My Sales Today' : 'Today&apos;s Sales'}</p>
               <p className="text-[28px] font-bold text-neutral-900 mt-1">{formatCurrency(todaySales)}</p>
             </div>
             <div className="w-10 h-10 rounded-lg bg-[#EEF2FF] flex items-center justify-center">
@@ -347,7 +361,8 @@ const DashboardOverview = () => {
           </div>
         </div>
 
-        {/* Today's Profit (Highlighted) */}
+        {/* Today's Profit (Highlighted) — hidden for cashier, show "—" for manager */}
+        {showProfit && (
         <div
           className="bg-white rounded-xl border border-neutral-100 p-5 hover:shadow-md hover:-translate-y-0.5 transition-all duration-200"
           style={{
@@ -358,17 +373,20 @@ const DashboardOverview = () => {
           <div className="flex items-start justify-between mb-3">
             <div>
               <p className="text-[13px] font-medium text-neutral-500 uppercase tracking-wide">Today&apos;s Profit</p>
-              <p className="text-[28px] font-bold mt-1" style={{ color: '#E8835C' }}>{formatCurrency(todayProfit)}</p>
+              <p className="text-[28px] font-bold mt-1" style={{ color: isManager ? '#D1D5DB' : '#E8835C' }}>
+                {isManager ? '—' : formatCurrency(todayProfit)}
+              </p>
             </div>
             <div className="w-10 h-10 rounded-lg flex items-center justify-center" style={{ backgroundColor: '#FDF2EC' }}>
               <DollarSign size={20} style={{ color: '#E8835C' }} />
             </div>
           </div>
           <div className="flex items-center gap-2">
-            {renderTrend(todayProfitTrend)}
+            {isManager ? renderTrend(null) : renderTrend(todayProfitTrend)}
             <span className="text-[13px] text-neutral-500">vs yesterday</span>
           </div>
         </div>
+        )}
 
         {/* Low Stock Items */}
         <div
@@ -492,7 +510,9 @@ const DashboardOverview = () => {
                     iconType="rect"
                   />
                   <Bar dataKey="sales" fill="#312E81" name="Sales" radius={[4, 4, 0, 0]} fillOpacity={0.8} />
+                  {showProfit && (
                   <Line dataKey="profit" stroke="#E8835C" name="Profit" strokeWidth={3} dot={false} type="monotone" />
+                  )}
                 </ComposedChart>
               </ResponsiveContainer>
             </div>
@@ -611,7 +631,8 @@ const DashboardOverview = () => {
         </div>
       </div>
 
-      {/* Worker Performance */}
+      {/* Worker Performance — hidden for cashiers */}
+      {showWorkers && (
       <div className="bg-white rounded-xl border border-neutral-200 p-6">
         <div className="flex items-center justify-between mb-6">
           <div>
@@ -743,6 +764,7 @@ const DashboardOverview = () => {
           </>
         )}
       </div>
+      )}
 
       {/* Floating Action Button (FAB) */}
       <div className="fixed bottom-20 md:bottom-6 right-4 md:right-6 z-50">
@@ -755,6 +777,7 @@ const DashboardOverview = () => {
               <ShoppingCart size={18} style={{ color: '#10B981' }} />
               <span className="text-sm font-medium text-neutral-900">Quick Sale</span>
             </button>
+            {!isCashier && (
             <button
               onClick={() => { setFabOpen(false); window.location.href = '/dashboard/inventory'; }}
               className="flex items-center gap-3 bg-white px-4 py-3 rounded-lg shadow-lg border border-neutral-200 hover:bg-neutral-50 transition-all duration-200 whitespace-nowrap"
@@ -762,6 +785,8 @@ const DashboardOverview = () => {
               <Package size={18} style={{ color: '#312E81' }} />
               <span className="text-sm font-medium text-neutral-900">Add Product</span>
             </button>
+            )}
+            {role === ROLES.ADMIN && (
             <button
               onClick={() => { setFabOpen(false); window.location.href = '/dashboard/workers'; }}
               className="flex items-center gap-3 bg-white px-4 py-3 rounded-lg shadow-lg border border-neutral-200 hover:bg-neutral-50 transition-all duration-200 whitespace-nowrap"
@@ -769,6 +794,7 @@ const DashboardOverview = () => {
               <UserPlus size={18} style={{ color: '#8B5CF6' }} />
               <span className="text-sm font-medium text-neutral-900">Add Worker</span>
             </button>
+            )}
           </div>
         )}
 

@@ -1,4 +1,4 @@
-// Business types
+// Business types — basic labels
 export const BUSINESS_TYPES = [
   { value: 'clothing', label: 'Clothing & Fashion', icon: '👕' },
   { value: 'electronics', label: 'Electronics', icon: '📱' },
@@ -8,6 +8,84 @@ export const BUSINESS_TYPES = [
   { value: 'cosmetics', label: 'Cosmetics & Beauty', icon: '💄' },
   { value: 'other', label: 'Other', icon: '🏪' },
 ];
+
+// Business type full config — with categories, attributes, and CSV template columns
+export const BUSINESS_TYPE_CONFIG = {
+  clothing: {
+    name: 'Clothing Boutique',
+    categories: ['Trousers', 'Shirts', 'Dresses', 'Jackets', 'Shoes', 'Accessories'],
+    attributes: ['Size', 'Color', 'Material', 'Brand'],
+    csvColumns: ['name', 'category', 'buyingPrice', 'sellingPrice', 'quantity', 'size', 'color', 'material', 'brand'],
+    fields: {
+      size: { label: 'Size', type: 'select', options: ['28', '30', '32', '34', '36', '38', '40', '42', 'XS', 'S', 'M', 'L', 'XL', 'XXL'], allowCustom: true },
+      color: { label: 'Color', type: 'select', options: ['Black', 'White', 'Blue', 'Red', 'Green', 'Yellow', 'Pink', 'Purple', 'Grey', 'Brown', 'Navy', 'Orange'], allowCustom: true },
+      brand: { label: 'Brand', type: 'text', placeholder: 'e.g., Levi\'s' },
+      material: { label: 'Material', type: 'select', options: ['Cotton', 'Denim', 'Polyester', 'Wool', 'Leather', 'Silk', 'Linen', 'Nylon', 'Spandex', 'Velvet'], allowCustom: true },
+    },
+  },
+  electronics: {
+    name: 'Electronics Shop',
+    categories: ['Phones', 'Laptops', 'Accessories', 'Parts', 'Cables', 'Audio'],
+    attributes: ['Brand', 'Model', 'Condition', 'Warranty'],
+    csvColumns: ['name', 'category', 'buyingPrice', 'sellingPrice', 'quantity', 'brand', 'model', 'condition', 'warranty'],
+    fields: {
+      brand: { label: 'Brand', type: 'select', options: ['Samsung', 'Apple', 'Huawei', 'Xiaomi', 'Oppo', 'Nokia', 'Sony', 'LG', 'Dell', 'HP', 'Lenovo'], allowCustom: true },
+      model: { label: 'Model', type: 'text', placeholder: 'e.g., Galaxy S24' },
+      condition: { label: 'Condition', type: 'select', options: ['New', 'Used', 'Refurbished'] },
+      warranty: { label: 'Warranty (Months)', type: 'number', placeholder: 'e.g., 12' },
+    },
+  },
+  grocery: {
+    name: 'Grocery & Duka',
+    categories: ['Beverages', 'Dry Foods', 'Fresh Produce', 'Dairy', 'Snacks', 'Household'],
+    attributes: ['Weight/Volume', 'Brand', 'Expiry Date', 'Organic'],
+    csvColumns: ['name', 'category', 'buyingPrice', 'sellingPrice', 'quantity', 'weight', 'brand', 'expiryDate', 'organic'],
+    fields: {
+      weight: { label: 'Weight/Volume', type: 'text', placeholder: 'e.g., 1 Litre, 500g' },
+      brand: { label: 'Brand', type: 'text', placeholder: 'e.g., Bidco' },
+      expiryDate: { label: 'Expiry Date', type: 'date' },
+      organic: { label: 'Organic', type: 'radio', options: ['Yes', 'No'] },
+    },
+  },
+  cosmetics: {
+    name: 'Cosmetics Shop',
+    categories: ['Makeup', 'Skincare', 'Hair', 'Fragrance', 'Nails', 'Tools'],
+    attributes: ['Shade', 'Skin Type', 'Expiry Date', 'Brand'],
+    csvColumns: ['name', 'category', 'buyingPrice', 'sellingPrice', 'quantity', 'shade', 'skinType', 'expiryDate', 'brand'],
+    fields: {
+      shade: { label: 'Shade', type: 'select', options: ['Ruby Red', 'Nude Beige', 'Coral Pink', 'Rose Gold', 'Berry', 'Mocha', 'Clear'], allowCustom: true },
+      skinType: { label: 'Skin Type', type: 'select', options: ['All Skin', 'Oily', 'Dry', 'Combination', 'Sensitive'] },
+      expiryDate: { label: 'Expiry Date', type: 'date' },
+      brand: { label: 'Brand', type: 'text', placeholder: 'e.g., MAC' },
+    },
+  },
+  hardware: {
+    name: 'Hardware Store',
+    categories: ['Tools', 'Paint', 'Electrical', 'Plumbing', 'Fasteners', 'Building'],
+    attributes: ['Material', 'Size/Dimensions', 'Unit', 'Brand'],
+    csvColumns: ['name', 'category', 'buyingPrice', 'sellingPrice', 'quantity', 'material', 'size', 'unit', 'brand'],
+    fields: {
+      material: { label: 'Material', type: 'select', options: ['Steel', 'Wood', 'Plastic', 'Aluminum', 'Copper', 'Brass', 'Iron', 'PVC', 'Rubber', 'Glass'], allowCustom: true },
+      specifications: { label: 'Size/Dimensions', type: 'text', placeholder: 'e.g., 500g / 16oz' },
+      unit: { label: 'Unit', type: 'select', options: ['Piece', 'Box', 'Set', 'Meter', 'Kg', 'Roll', 'Bucket', 'Bag', 'Pair', 'Pack'] },
+      brand: { label: 'Brand', type: 'text', placeholder: 'e.g., Stanley' },
+    },
+  },
+  pharmacy: {
+    name: 'Pharmacy',
+    categories: ['Prescription', 'OTC', 'First Aid', 'Vitamins', 'Personal Care', 'Baby'],
+    attributes: ['Strength/Dosage', 'Form', 'Expiry Date', 'Prescription Required'],
+    csvColumns: ['name', 'category', 'buyingPrice', 'sellingPrice', 'quantity', 'strength', 'form', 'expiryDate', 'brand', 'prescriptionRequired', 'batchNumber'],
+    fields: {
+      strength: { label: 'Strength/Dosage', type: 'text', placeholder: 'e.g., 500mg' },
+      form: { label: 'Form', type: 'select', options: ['Tablet', 'Capsule', 'Syrup', 'Cream', 'Injection', 'Drops', 'Powder', 'Ointment'] },
+      expiryDate: { label: 'Expiry Date', type: 'date' },
+      brand: { label: 'Brand', type: 'text', placeholder: 'e.g., Panadol' },
+      prescriptionRequired: { label: 'Prescription Required', type: 'radio', options: ['Yes', 'No'] },
+      batchNumber: { label: 'Batch Number', type: 'text', placeholder: 'e.g., B2026-05-23' },
+    },
+  },
+};
 
 // Subscription plans
 export const PLANS = {

@@ -9,6 +9,13 @@ const {
   deleteProduct,
   updateStock,
   getInventoryStats,
+  getFilters,
+  importCsv,
+  downloadTemplate,
+  getPriceHistory,
+  getStockHistory,
+  restockProduct,
+  uploadImage,
 } = require('../controllers/productController');
 
 // All routes are protected with Clerk auth
@@ -16,6 +23,15 @@ router.use(clerkAuth);
 
 // Stats route (before :id to avoid conflict)
 router.get('/stats', getInventoryStats);
+
+// Filters route (before :id)
+router.get('/filters', getFilters);
+
+// Template download (before :id)
+router.get('/template', downloadTemplate);
+
+// CSV import (before :id)
+router.post('/import', importCsv);
 
 // Product routes
 router.route('/')
@@ -29,5 +45,15 @@ router.route('/:id')
 
 // Stock update
 router.patch('/:id/stock', updateStock);
+
+// Price & stock history
+router.get('/:id/price-history', getPriceHistory);
+router.get('/:id/stock-history', getStockHistory);
+
+// Restock
+router.post('/:id/restock', restockProduct);
+
+// Image upload
+router.post('/:id/image', uploadImage);
 
 module.exports = router;

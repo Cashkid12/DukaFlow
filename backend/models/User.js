@@ -36,11 +36,17 @@ const userSchema = new mongoose.Schema({
   },
   role: {
     type: String,
-    enum: ['admin', 'employee'],
+    enum: ['admin', 'manager', 'cashier'],
     default: 'admin',
   },
   permissions: [String],
   avatar: String, // Clerk profile image URL
+  status: {
+    type: String,
+    enum: ['online', 'offline', 'pending'],
+    default: 'pending',
+  },
+  invitedAt: Date,
   isActive: {
     type: Boolean,
     default: true,

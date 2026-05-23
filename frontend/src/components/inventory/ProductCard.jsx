@@ -61,7 +61,7 @@ const ProductCard = ({
 
   const handleCardClick = (e) => {
     if (e.target.closest('button') || e.target.closest('[data-menu]')) return;
-    navigate(`/inventory/${product._id}`);
+    navigate(`/dashboard/inventory/${product._id}`);
   };
 
   const handleMenuAction = (action) => {
@@ -71,7 +71,7 @@ const ProductCard = ({
       case 'restock': onRestock?.(product); break;
       case 'duplicate': onDuplicate?.(product); break;
       case 'delete': onDelete?.(product); break;
-      case 'view': navigate(`/inventory/${product._id}`); break;
+      case 'view': navigate(`/dashboard/inventory/${product._id}`); break;
     }
   };
 

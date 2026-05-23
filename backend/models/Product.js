@@ -37,12 +37,35 @@ const productSchema = new mongoose.Schema({
     default: 10,
   },
   image: String,
+  images: [String],
   sku: {
     type: String,
     unique: true,
     sparse: true,
   },
   barcode: String,
+  supplier: String,
+  notes: String,
+  createdBy: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+  },
+  variants: [{
+    name: String,
+    sku: String,
+    quantity: { type: Number, default: 0 },
+    buyingPrice: Number,
+    sellingPrice: Number,
+    attributes: mongoose.Schema.Types.Mixed,
+  }],
+  batches: [{
+    batchNumber: String,
+    receivedDate: Date,
+    initialQuantity: Number,
+    remainingQuantity: Number,
+    expiryDate: Date,
+    status: { type: String, enum: ['active', 'expired', 'depleted'], default: 'active' },
+  }],
   // Business-type specific fields
   attributes: {
     // Clothing
