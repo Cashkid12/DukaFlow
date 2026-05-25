@@ -310,7 +310,10 @@ exports.getDashboardData = async (req, res) => {
       },
     });
   } catch (error) {
-    console.error('Dashboard error:', error);
+    console.error('Dashboard error:', error.message);
+    console.error('   Stack:', error.stack?.split('\n').slice(0, 3).join('\n'));
+    console.error('   ShopId:', req.user?.shop?.toString() || 'null');
+    console.error('   ENV — MONGODB_URI:', !!process.env.MONGODB_URI);
     res.status(500).json({
       success: false,
       message: 'Failed to fetch dashboard data',

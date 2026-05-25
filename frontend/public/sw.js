@@ -79,8 +79,8 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // ── Everything else: network-first ───────────────────────────────────────────
-  event.respondWith(networkFirst(request));
+  // ── Everything else: network-first with graceful fallback ────────────────────
+  event.respondWith(networkFirstGraceful(request));
 });
 
 // ─── Strategies ───────────────────────────────────────────────────────────────
@@ -103,7 +103,7 @@ async function cacheFirst(request) {
   }
 }
 
-/** Network-first: try network, fall back to cache on failure. */
+/** Network-first: try network, fall back to cache on failure. Never throws. */
 async function networkFirst(request) {
   try {
     const response = await fetch(request);
@@ -115,7 +115,29 @@ async function networkFirst(request) {
   } catch {
     const cached = await caches.match(request);
     if (cached) return cached;
-    throw new Error('Network unavailable');
+    // Return a proper error response instead of throwing — prevents unhandled rejections
+    return new Response(JSON.stringify({ success: false, message: 'Network unavailable' }), {
+      status: 503,
+      statusText: 'Service Unavailable',
+      headers: { 'Content-Type': 'application/json' },
+    });
+  }
+}
+
+/** Network-first with graceful fallback: never throws, returns empty response on failure. */
+async function networkFirstGraceful(request) {
+  try {
+    const response = await fetch(request);
+    if (response.ok) {
+      const cache = await caches.open(RUNTIME_CACHE);
+      cache.put(request, response.clone());
+    }
+    return response;
+  } catch {
+    const cached = await caches.match(request);
+    if (cached) return cached;
+    // Return an empty response instead of throwing — prevents unhandled rejections
+    return new Response('', { status: 408, statusText: 'Offline' });
   }
 }
 

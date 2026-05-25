@@ -160,14 +160,14 @@ const WorkerCard = ({ worker, onView, onEdit, onResend }) => {
       <div className="flex gap-3.5">
         <div className="relative shrink-0">
           {worker.avatar ? (
-            <img src={worker.avatar} alt={worker.fullName} className="w-14 h-14 rounded-full object-cover" />
+            <img src={worker.avatar} alt={worker.fullName} className="w-10 h-10 rounded-full object-cover" />
           ) : (
-            <div className="w-14 h-14 rounded-full bg-[#312E81] text-white font-bold flex items-center justify-center text-lg">
+            <div className="w-10 h-10 rounded-full bg-[#312E81] text-white font-bold flex items-center justify-center text-sm">
               {initials}
             </div>
           )}
           {isOnline && (
-            <span className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-full bg-[#10B981] border-2 border-white" />
+            <span className="absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full bg-[#10B981] border-2 border-white" />
           )}
         </div>
         <div className="flex-1 min-w-0">
@@ -207,8 +207,8 @@ const WorkerCard = ({ worker, onView, onEdit, onResend }) => {
         <p className="text-[11px] text-neutral-400 text-right mt-1">{worker.performance?.percentage || 0}% of top performer</p>
       </div>
 
-      {/* Quick Actions */}
-      <div className="flex gap-2 mt-4 pt-3 border-t border-neutral-100">
+      {/* Quick Actions — visible on sm+ only, hidden on mobile */}
+      <div className="hidden sm:flex gap-2 mt-4 pt-3 border-t border-neutral-100">
         <button
           onClick={(e) => { e.stopPropagation(); onView(worker); }}
           className="flex-1 flex items-center justify-center gap-1.5 py-2 text-xs font-medium text-[#64748B] border border-[#CBD5E1] rounded-lg hover:bg-neutral-50 transition-colors"
@@ -228,6 +228,10 @@ const WorkerCard = ({ worker, onView, onEdit, onResend }) => {
           <MessageSquare size={13} /> Message
         </button>
       </div>
+      {/* Mobile: tap card to view details */}
+      <p className="sm:hidden text-[11px] text-neutral-400 mt-3 pt-2 border-t border-neutral-100 text-center">
+        Tap to view details
+      </p>
 
       {/* Pending: Resend Invite */}
       {isPending && (
@@ -631,10 +635,10 @@ const WorkersPage = () => {
         </>
       )}
 
-      {/* FAB for mobile */}
+      {/* FAB for mobile — above bottom nav (64px nav + 16px gap = 80px) */}
       <button
         onClick={() => setShowAddModal(true)}
-        className="sm:hidden fixed bottom-6 right-6 z-40 w-14 h-14 bg-[#312E81] text-white rounded-2xl shadow-xl flex items-center justify-center hover:bg-[#1E1B4B] transition-colors"
+        className="sm:hidden fixed bottom-20 right-4 z-40 w-14 h-14 bg-[#312E81] text-white rounded-2xl shadow-xl flex items-center justify-center hover:bg-[#1E1B4B] transition-colors"
       >
         <UserPlus size={22} />
       </button>

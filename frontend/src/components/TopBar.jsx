@@ -33,7 +33,7 @@ const TopBar = ({ onMenuToggle }) => {
   return (
     <header 
       className="bg-white border-b border-neutral-200 sticky top-0 z-10"
-      style={{ height: '64px', padding: '0 12px' }}
+      style={{ height: '56px', padding: '0 16px' }}
     >
       <div className="flex items-center justify-between h-full max-w-full">
         {/* Left Section: Hamburger + Shop Name */}

@@ -173,31 +173,57 @@ export default function OnboardingPage() {
 
   const debounceRef = useRef(null);
 
+  const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+
   /* ── Initialization ── */
   useEffect(() => {
-    // Check if already completed
-    if (localStorage.getItem('onboarding_completed') === 'true') {
-      navigate('/dashboard', { replace: true });
-      return;
-    }
-    // Restore progress
-    const progress = localStorage.getItem('onboarding_progress');
-    if (progress) {
-      const saved = JSON.parse(progress);
-      if (saved.shopName) setShopName(saved.shopName);
-      if (saved.subdomain) setSubdomain(saved.subdomain);
-      if (saved.businessTypes) setSelectedBusinessTypes(saved.businessTypes);
-      if (saved.location) setLocation(saved.location);
-      if (saved.source) setSource(saved.source);
-      if (saved.shopSize) setShopSize(saved.shopSize);
-      if (saved.currentStep) setCurrentStep(saved.currentStep);
-    }
-    // Default shop name from Clerk
-    if (firstName && !shopName) {
-      const defaultName = `${firstName}'s Shop`;
-      setShopName(defaultName);
-      setSubdomain(slugify(defaultName));
-    }
+    let cancelled = false;
+
+    // Check backend: is user already onboarded?
+    const checkOnboarding = async () => {
+      try {
+        const token = await getToken();
+        if (!token) return;
+        const res = await fetch(`${API_BASE_URL}/auth/onboarding-status`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (!cancelled && res.ok) {
+          const data = await res.json();
+          if (data.onboarded) {
+            navigate('/dashboard', { replace: true });
+            return;
+          }
+        }
+      } catch {
+        // Backend unreachable — fall through to show onboarding
+      }
+
+      if (cancelled) return;
+
+      // Restore progress from localStorage
+      const progress = localStorage.getItem('onboarding_progress');
+      if (progress) {
+        const saved = JSON.parse(progress);
+        if (saved.shopName) setShopName(saved.shopName);
+        if (saved.subdomain) setSubdomain(saved.subdomain);
+        if (saved.businessTypes) setSelectedBusinessTypes(saved.businessTypes);
+        if (saved.location) setLocation(saved.location);
+        if (saved.source) setSource(saved.source);
+        if (saved.shopSize) setShopSize(saved.shopSize);
+        if (saved.currentStep) setCurrentStep(saved.currentStep);
+      }
+
+      // Default shop name from Clerk
+      if (firstName && !shopName) {
+        const defaultName = `${firstName}'s Shop`;
+        setShopName(defaultName);
+        setSubdomain(slugify(defaultName));
+      }
+    };
+
+    checkOnboarding();
+
+    return () => { cancelled = true; };
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   /* ── Persist progress ── */

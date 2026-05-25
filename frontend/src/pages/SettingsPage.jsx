@@ -387,7 +387,7 @@ export default function SettingsPage() {
                   onChange={(e) => setShopForm({ ...shopForm, description: e.target.value })} />
                 <p className="text-xs text-[#64748B] -mt-2 mb-4">{shopForm.description.length}/200</p>
 
-                <Button type="submit" variant="primary" className="w-[200px]"
+                <Button type="submit" variant="primary" className="w-full sm:w-[200px]"
                   disabled={profileMutation.isPending}>
                   {profileMutation.isPending ? 'Saving...' : 'Save Changes'}
                 </Button>
@@ -745,7 +745,7 @@ export default function SettingsPage() {
                         </label>
                       </div>
                     </div>
-                    <Button variant="primary" onClick={handleSaveNotifications}
+                    <Button variant="primary" onClick={handleSaveNotifications} className="w-full sm:w-auto"
                       disabled={notifMutation.isPending}>
                       {notifMutation.isPending ? 'Saving...' : 'Save Preferences'}
                     </Button>

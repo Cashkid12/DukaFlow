@@ -43,6 +43,40 @@ router.get('/me/clerk', clerkAuth, async (req, res) => {
   }
 });
 
+// Clerk-authenticated: check if user has completed onboarding (has a shop)
+router.get('/onboarding-status', clerkAuth, async (req, res) => {
+  try {
+    const Shop = require('../models/Shop');
+    const hasShop = !!req.user.shop;
+
+    if (hasShop) {
+      const shop = await Shop.findById(req.user.shop).select('name slug').lean();
+      return res.status(200).json({
+        success: true,
+        onboarded: true,
+        shopName: shop?.name || null,
+        shopSlug: shop?.slug || null,
+        redirectTo: '/dashboard',
+      });
+    }
+
+    // No shop — user must complete onboarding
+    return res.status(200).json({
+      success: true,
+      onboarded: false,
+      redirectTo: '/onboarding',
+    });
+  } catch (error) {
+    console.error('Onboarding status error:', error.message);
+    // On error, default to onboarding for safety
+    return res.status(200).json({
+      success: true,
+      onboarded: false,
+      redirectTo: '/onboarding',
+    });
+  }
+});
+
 // Force logout sessions for a worker (admin only)
 router.post('/workers/:id/force-logout', clerkAuth, async (req, res) => {
   try {

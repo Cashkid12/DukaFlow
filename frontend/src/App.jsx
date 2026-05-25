@@ -6,6 +6,7 @@ import LandingPage from './pages/LandingPage';
 import SignIn from './pages/SignIn';
 import SignUp from './pages/SignUp';
 import TestOnboarding from './pages/TestOnboarding';
+import AuthResolve from './pages/AuthResolve';
 import OnboardingPage from './pages/OnboardingPage';
 import DashboardLayout from './components/DashboardLayout';
 import { BranchProvider } from './context/BranchContext';
@@ -69,6 +70,16 @@ function App() {
         <Route path="/" element={<LandingPage />} />
         <Route path="/sign-in/*" element={<SignIn />} />
         <Route path="/sign-up/*" element={<SignUp />} />
+
+        {/* Auth Resolution — post-auth, checks onboarding status */}
+        <Route
+          path="/auth-resolve"
+          element={
+            <SignedIn>
+              <AuthResolve />
+            </SignedIn>
+          }
+        />
         
         {/* Test Route */}
         <Route path="/test" element={<TestOnboarding />} />

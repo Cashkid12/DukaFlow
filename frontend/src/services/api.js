@@ -334,6 +334,12 @@ export const settingsService = {
     return response.data;
   },
 
+  // Get categories (from shop settings)
+  getCategories: async () => {
+    const response = await api.get('/settings/categories');
+    return response.data;
+  },
+
   // Update categories
   updateCategories: async (categories) => {
     const response = await api.put('/settings/categories', { categories });

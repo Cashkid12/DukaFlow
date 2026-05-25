@@ -1,9 +1,9 @@
-import React, { useState, useMemo, useCallback, useEffect, useRef } from 'react';
+import React, { useState, useMemo, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Search, Filter, Grid, List, Package,
   AlertCircle, X, ChevronDown,
-  Loader2,
+  Loader2, Plus,
 } from 'lucide-react';
 import { useInventoryQuery } from '../hooks/useInventoryQuery';
 import { useInventorySocket } from '../hooks/useInventorySocket';
@@ -11,6 +11,8 @@ import { useFiltersQuery } from '../hooks/useFiltersQuery';
 import { useDebounce } from '../hooks/useDebounce';
 import { formatCurrency } from '../utils/formatters';
 import ProductCard from '../components/inventory/ProductCard';
+import { useCategoriesQuery } from '../hooks/useCategoriesQuery';
+import CategoryPills from '../components/inventory/CategoryPills';
 import RestockModal from '../components/inventory/RestockModal';
 import DeleteConfirmModal from '../components/inventory/DeleteConfirmModal';
 import AddProductDropdown from '../components/inventory/AddProductDropdown';
@@ -72,21 +74,15 @@ const InventoryPage = () => {
   // Dynamic filters from backend
   const { data: filtersData } = useFiltersQuery();
 
+  // Shop categories from settings (matches business type from onboarding)
+  const { data: categoriesData } = useCategoriesQuery();
+  const shopCategories = categoriesData?.categories || [];
+
   const products = data?.products || [];
-  const categories = data?.categories || [];
   const hasData = data?.hasData || false;
   const totalPages = data?.totalPages || 1;
   const hasMore = data?.hasMore ?? false;
   const total = data?.total || 0;
-  const availableFilters = data?.filters || { sizes: [], colors: [], brands: [] };
-
-  // Dynamic category counts from filters endpoint
-  const categoryCounts = useMemo(() => {
-    if (!filtersData?.categories?.length) return {};
-    const map = {};
-    filtersData.categories.forEach(c => { map[c.name] = c.count; });
-    return map;
-  }, [filtersData]);
 
   // Dynamic attributes from filters endpoint
   const dynamicAttributes = filtersData?.attributes || {};
@@ -223,24 +219,12 @@ const InventoryPage = () => {
               </div>
             </div>
 
-            {/* Category pills with 0 count */}
-            <div className="flex gap-2 overflow-x-auto px-4 mt-3 scrollbar-none">
-              <button
-                onClick={() => setSelectedCategory('all')}
-                className="sm:px-4 sm:py-2 sm:text-sm px-3 py-1.5 text-[13px] rounded-full font-medium bg-[#312E81] text-white transition-all duration-150 cursor-pointer whitespace-nowrap"
-              >
-                All (0)
-              </button>
-              {categories.map((cat) => (
-                <button
-                  key={cat}
-                  onClick={() => setSelectedCategory(cat)}
-                  className="sm:px-4 sm:py-2 sm:text-sm px-3 py-1.5 text-[13px] rounded-full font-medium bg-white border border-neutral-300 text-neutral-700 hover:border-[#312E81] hover:bg-[#EEF2FF] transition-all duration-150 cursor-pointer whitespace-nowrap"
-                >
-                  {cat} (0)
-                </button>
-              ))}
-            </div>
+            <CategoryPills
+              categories={shopCategories}
+              total={0}
+              selected={selectedCategory}
+              onSelect={(cat) => setSelectedCategory(cat)}
+            />
           </div>
 
           {/* Empty card */}
@@ -288,6 +272,90 @@ const InventoryPage = () => {
   }
 
   // ========================
+  // EMPTY CATEGORY (Selected category has 0 products)
+  // ========================
+  const isCategoryOnlyFilter = selectedCategory !== 'all' &&
+    selectedStockStatus === 'all' &&
+    !searchTerm &&
+    !attrFilters.size &&
+    !attrFilters.color &&
+    !attrFilters.brand;
+
+  if (isCategoryOnlyFilter && products.length === 0 && hasData) {
+    return (
+      <div className="w-full max-w-full overflow-hidden">
+        <div className="space-y-6">
+          {/* Header */}
+          <div className="flex items-center justify-between">
+            <h1 className="text-2xl font-bold text-neutral-900">Inventory</h1>
+            <AddProductDropdown
+              onBarcodeClick={() => setShowBarcodeModal(true)}
+              onCsvClick={() => setShowCsvModal(true)}
+            />
+          </div>
+
+          {/* Filter bar with CategoryPills */}
+          <div className="bg-white rounded-2xl border border-neutral-200 py-4">
+            <div className="px-4">
+              <div className="relative w-full md:w-80">
+                <Search size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400" />
+                <input
+                  type="text"
+                  placeholder="Search products..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="w-full h-11 pl-10 pr-4 border border-neutral-300 rounded-xl text-sm placeholder-neutral-400 focus:ring-2 focus:ring-[#312E81]/20 focus:border-[#312E81] outline-none"
+                />
+              </div>
+            </div>
+            <CategoryPills
+              categories={shopCategories}
+              total={total}
+              selected={selectedCategory}
+              onSelect={(cat) => { setSelectedCategory(cat); setPage(1); }}
+            />
+          </div>
+
+          {/* Empty category card */}
+          <div className="flex flex-col items-center justify-center py-16 md:py-20 bg-white rounded-2xl border border-neutral-200">
+            <Package size={56} className="text-neutral-200 mb-4" />
+            <h3 className="text-lg font-semibold text-[#1E293B] mb-1">
+              No products in {selectedCategory}
+            </h3>
+            <p className="text-sm text-[#64748B] mb-6 text-center max-w-sm px-4">
+              Add your first product in this category
+            </p>
+            <div className="flex flex-col sm:flex-row gap-3 items-center">
+              <button
+                onClick={() => navigate(`/dashboard/inventory/add?category=${encodeURIComponent(selectedCategory)}`)}
+                className="flex items-center justify-center gap-2 h-11 px-6 bg-[#312E81] text-white rounded-xl hover:bg-[#1E1B4B] transition-colors text-sm font-medium"
+              >
+                <Plus size={18} />
+                <span>Add Product in {selectedCategory}</span>
+              </button>
+              <button
+                onClick={clearAllFilters}
+                className="text-sm font-medium text-[#312E81] hover:underline"
+              >
+                Or Clear Filter to see all products
+              </button>
+            </div>
+          </div>
+
+          {/* FAB */}
+          <button
+            onClick={() => navigate('/dashboard/inventory/add')}
+            className="fixed md:bottom-6 md:right-6 bottom-20 right-4 w-14 h-14 rounded-2xl bg-[#312E81] text-white shadow-lg hover:bg-[#1E1B4B] hover:scale-105 hover:shadow-xl transition-all duration-200 flex items-center justify-center z-40"
+            aria-label="Add product"
+          >
+            <Package size={24} />
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // ========================
   // NO RESULTS (Filters active, no matches)
   // ========================
   if (hasActiveFilters && products.length === 0) {
@@ -317,6 +385,12 @@ const InventoryPage = () => {
                 />
               </div>
             </div>
+            <CategoryPills
+              categories={shopCategories}
+              total={total}
+              selected={selectedCategory}
+              onSelect={(cat) => { setSelectedCategory(cat); setPage(1); }}
+            />
           </div>
 
           {/* No results */}
@@ -361,7 +435,7 @@ const InventoryPage = () => {
           <div>
             <h1 className="text-2xl font-bold text-neutral-900">Inventory</h1>
             <p className="text-sm text-neutral-500 mt-1">
-              {total} product{total !== 1 ? 's' : ''} across {categories.length} categor{categories.length !== 1 ? 'ies' : 'y'}
+              {total} product{total !== 1 ? 's' : ''} across {shopCategories.length} categor{shopCategories.length !== 1 ? 'ies' : 'y'}
             </p>
           </div>
           <div className="flex gap-2">
@@ -451,34 +525,12 @@ const InventoryPage = () => {
           </div>
 
           {/* Category pills */}
-          <div className="flex gap-2 overflow-x-auto px-4 mt-3 scrollbar-none">
-            <button
-              onClick={() => { setSelectedCategory('all'); setPage(1); }}
-              className={`sm:px-4 sm:py-2 sm:text-sm px-3 py-1.5 text-[13px] rounded-full font-medium whitespace-nowrap transition-all duration-150 ${
-                selectedCategory === 'all'
-                  ? 'bg-[#312E81] text-white'
-                  : 'bg-white border border-neutral-300 text-neutral-700 hover:border-[#312E81] hover:bg-[#EEF2FF]'
-              }`}
-            >
-              All{total > 0 ? ` (${total})` : ''}
-            </button>
-            {categories.map((cat) => {
-              const count = categoryCounts[cat];
-              return (
-                <button
-                  key={cat}
-                  onClick={() => { setSelectedCategory(cat); setPage(1); }}
-                  className={`sm:px-4 sm:py-2 sm:text-sm px-3 py-1.5 text-[13px] rounded-full font-medium whitespace-nowrap transition-all duration-150 ${
-                    selectedCategory === cat
-                      ? 'bg-[#312E81] text-white'
-                      : 'bg-white border border-neutral-300 text-neutral-700 hover:border-[#312E81] hover:bg-[#EEF2FF]'
-                  }`}
-                >
-                  {cat}{count !== undefined ? ` (${count})` : ''}
-                </button>
-              );
-            })}
-          </div>
+          <CategoryPills
+            categories={shopCategories}
+            total={total}
+            selected={selectedCategory}
+            onSelect={(cat) => { setSelectedCategory(cat); setPage(1); }}
+          />
 
           {/* Stock status pills */}
           <div className="flex gap-2 overflow-x-auto px-4 mt-2 scrollbar-none">

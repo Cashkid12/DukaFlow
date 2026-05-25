@@ -3,6 +3,7 @@ const router = express.Router();
 const { clerkAuth } = require('../middleware/clerkAuth');
 const {
   getSettings,
+  getCategories,
   updateProfile,
   updateCategories,
   updateAttributes,
@@ -21,6 +22,7 @@ router.use(clerkAuth);
 
 // Shop settings
 router.get('/', getSettings);
+router.get('/categories', getCategories);
 router.put('/profile', updateProfile);
 router.put('/categories', updateCategories);
 router.put('/attributes', updateAttributes);

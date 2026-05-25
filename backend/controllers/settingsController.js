@@ -64,6 +64,60 @@ exports.updateProfile = async (req, res) => {
 };
 
 // ──────────────────────────────────────────────
+// GET /api/settings/categories — Get shop categories with counts
+// ──────────────────────────────────────────────
+exports.getCategories = async (req, res) => {
+  try {
+    const shop = await Shop.findById(req.shopId)
+      .select('name businessType businessTypes settings.categories')
+      .lean();
+
+    if (!shop) {
+      return res.status(404).json({ success: false, message: 'Shop not found' });
+    }
+
+    const categories = shop.settings?.categories || [];
+
+    // Get actual product counts per category
+    const categoryAgg = await Product.aggregate([
+      { $match: { shop: req.shopId, isActive: true } },
+      { $group: { _id: '$category', count: { $sum: 1 } } },
+    ]);
+
+    const countMap = {};
+    categoryAgg.forEach(c => { countMap[c._id] = c.count; });
+
+    // Merge shop categories with product counts
+    const categoriesWithCounts = categories.map(name => ({
+      name,
+      count: countMap[name] || 0,
+    }));
+
+    // Also include any categories that exist in products but not in shop settings
+    Object.entries(countMap).forEach(([name, count]) => {
+      if (!categories.includes(name)) {
+        categoriesWithCounts.push({ name, count });
+      }
+    });
+
+    const totalProducts = await Product.countDocuments({ shop: req.shopId, isActive: true });
+
+    res.status(200).json({
+      success: true,
+      data: {
+        categories: categoriesWithCounts,
+        businessType: shop.businessType || null,
+        businessTypes: shop.businessTypes || [],
+        totalProducts,
+      },
+    });
+  } catch (error) {
+    console.error('Get categories error:', error);
+    res.status(500).json({ success: false, message: 'Failed to fetch categories' });
+  }
+};
+
+// ──────────────────────────────────────────────
 // PUT /api/settings/categories — Update categories
 // ──────────────────────────────────────────────
 exports.updateCategories = async (req, res) => {

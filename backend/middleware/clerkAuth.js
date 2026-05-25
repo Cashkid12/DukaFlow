@@ -12,6 +12,15 @@ const clerk = require('@clerk/clerk-sdk-node');
  */
 exports.clerkAuth = async (req, res, next) => {
   try {
+    // Fail fast if Clerk secret key is not configured
+    if (!process.env.CLERK_SECRET_KEY) {
+      console.error('❌ CLERK_SECRET_KEY is not set in environment variables');
+      return res.status(500).json({
+        error: 'Server configuration error',
+        message: 'Authentication provider is not configured',
+      });
+    }
+
     // Get token from Authorization header
     const authHeader = req.headers.authorization;
     
@@ -160,7 +169,10 @@ exports.clerkAuth = async (req, res, next) => {
     // Proceed to next middleware/route
     next();
   } catch (error) {
-    console.error('❌ Clerk authentication error:', error);
+    console.error('❌ Clerk authentication error:', error.message);
+    console.error('   Stack:', error.stack?.split('\n').slice(0, 3).join('\n'));
+    console.error('   ENV check — CLERK_SECRET_KEY present:', !!process.env.CLERK_SECRET_KEY);
+    console.error('   ENV check — MONGODB_URI present:', !!process.env.MONGODB_URI);
     return res.status(500).json({ 
       error: 'Authentication failed',
       message: 'Internal server error'
