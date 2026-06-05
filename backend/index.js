@@ -109,14 +109,9 @@ app.get('/api/health', (req, res) => {
   res.json({ status: 'OK', message: 'DukaFlow API is running', timestamp: Date.now() });
 });
 
-// Socket.io connection
+// Socket.io connection (canonical join:shop handler is in sockets/index.js)
 io.on('connection', (socket) => {
   console.log('New client connected:', socket.id);
-
-  socket.on('join_shop', (shopId) => {
-    socket.join(shopId);
-    console.log(`Client joined shop: ${shopId}`);
-  });
 
   socket.on('disconnect', () => {
     console.log('Client disconnected:', socket.id);

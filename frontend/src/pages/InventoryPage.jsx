@@ -1,5 +1,5 @@
-import React, { useState, useMemo, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useState, useMemo, useRef, useEffect } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import {
   Search, Filter, Grid, List, Package,
   AlertCircle, X, ChevronDown,
@@ -37,6 +37,7 @@ const getStockBadge = (status) => {
 
 const InventoryPage = () => {
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
 
   // --- State ---
   const [searchTerm, setSearchTerm] = useState('');
@@ -54,6 +55,26 @@ const InventoryPage = () => {
   const [showBarcodeModal, setShowBarcodeModal] = useState(false);
   const [showCsvModal, setShowCsvModal] = useState(false);
   const loadMoreRef = useRef(null);
+
+  // --- Read URL filter param (e.g., ?filter=low_stock from Dashboard) ---
+  useEffect(() => {
+    const filterParam = searchParams.get('filter');
+    if (filterParam) {
+      // Normalize: support both "low-stock" (hyphen) and "low_stock" (underscore)
+      const normalized = filterParam.replace(/-/g, '_');
+      const validStatuses = ['in_stock', 'low_stock', 'out_of_stock'];
+      if (validStatuses.includes(normalized)) {
+        setSelectedStockStatus(normalized);
+      }
+      // Also support category filter
+      const categoryParam = searchParams.get('category');
+      if (categoryParam) {
+        setSelectedCategory(categoryParam);
+      }
+      // Clean URL params after applying
+      setSearchParams({}, { replace: true });
+    }
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // --- Data ---
   const filters = useMemo(() => ({

@@ -43,10 +43,22 @@ const userSchema = new mongoose.Schema({
   avatar: String, // Clerk profile image URL
   status: {
     type: String,
-    enum: ['online', 'offline', 'pending'],
+    enum: ['online', 'offline', 'pending', 'declined', 'inactive'],
     default: 'pending',
   },
   invitedAt: Date,
+  // Invitation system fields
+  invitationToken: {
+    type: String,
+    index: true,
+  },
+  invitationSentAt: Date,
+  invitationExpiresAt: Date,
+  invitationAcceptedAt: Date,
+  invitedBy: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+  },
   isActive: {
     type: Boolean,
     default: true,

@@ -123,6 +123,7 @@ export const useUpdateProduct = () => {
     const result = await response.json();
     queryClient.invalidateQueries({ queryKey: ['product', productId] });
     queryClient.invalidateQueries({ queryKey: ['inventory'] });
+    queryClient.invalidateQueries({ queryKey: ['dashboard'] });
     return result.data;
   };
 
@@ -145,6 +146,7 @@ export const useDeleteProduct = () => {
     }
 
     queryClient.invalidateQueries({ queryKey: ['inventory'] });
+    queryClient.invalidateQueries({ queryKey: ['dashboard'] });
     queryClient.invalidateQueries({ queryKey: ['product', productId] });
   };
 
@@ -176,6 +178,7 @@ export const useRestockProduct = () => {
     queryClient.invalidateQueries({ queryKey: ['product', productId, 'stockHistory'] });
     queryClient.invalidateQueries({ queryKey: ['product', productId, 'priceHistory'] });
     queryClient.invalidateQueries({ queryKey: ['inventory'] });
+    queryClient.invalidateQueries({ queryKey: ['dashboard'] });
     return result.data;
   };
 
@@ -204,6 +207,7 @@ export const useUploadImage = () => {
     const result = await response.json();
     queryClient.invalidateQueries({ queryKey: ['product', productId] });
     queryClient.invalidateQueries({ queryKey: ['inventory'] });
+    queryClient.invalidateQueries({ queryKey: ['dashboard'] });
     return result.data;
   };
 

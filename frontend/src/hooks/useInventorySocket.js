@@ -26,32 +26,37 @@ export const useInventorySocket = (shopId) => {
 
     socket.on('connect', () => {
       console.log('📦 Inventory socket connected:', socket.id);
-      socket.emit('join_shop', shopId);
+      socket.emit('join:shop', shopId);
     });
 
     socket.on('product:created', (data) => {
       console.log('➕ Product created:', data?.productId);
       queryClient.invalidateQueries({ queryKey: ['inventory'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
     });
 
     socket.on('product:updated', (data) => {
       console.log('✏️ Product updated:', data?.productId);
       queryClient.invalidateQueries({ queryKey: ['inventory'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
     });
 
     socket.on('product:deleted', (data) => {
       console.log('🗑️ Product deleted:', data?.productId);
       queryClient.invalidateQueries({ queryKey: ['inventory'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
     });
 
     socket.on('stock:updated', (data) => {
       console.log('📊 Stock updated:', data?.productId);
       queryClient.invalidateQueries({ queryKey: ['inventory'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
     });
 
     socket.on('sale:completed', (data) => {
       console.log('💰 Sale completed — refreshing inventory');
       queryClient.invalidateQueries({ queryKey: ['inventory'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
     });
 
     socket.on('disconnect', () => {

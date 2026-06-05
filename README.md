@@ -1,368 +1,329 @@
-# 🎉 DUKAFLOW - Multi-Tenant SaaS Business Management Platform
+# DukaFlow — Multi-Tenant SaaS Business Management Platform
 
-**Tagline:** "Run Your Duka, Smarter."
+> **"Run Your Duka, Smarter."**
 
-A complete, production-ready SaaS platform built for small retail businesses in Kenya/East Africa.
+A production-ready SaaS platform for small retail businesses in Kenya/East Africa. Manage inventory, record sales, track workers, and get real-time insights — all from one dashboard.
 
 ---
 
-## 📁 PROJECT STRUCTURE
+## Tech Stack
+
+| Layer | Technologies |
+|-------|-------------|
+| **Frontend** | React 19, Vite 8, Tailwind CSS 4, React Router 6, TanStack Query, Recharts, Socket.IO Client, Lucide Icons |
+| **Backend** | Node.js, Express 4, MongoDB + Mongoose, Socket.IO, Nodemailer, Node-Cron |
+| **Auth** | Clerk (Google/Apple sign-in, session management) |
+| **Deployment** | Vercel (frontend), Render/Railway (backend), MongoDB Atlas (database) |
+
+---
+
+## Project Structure
 
 ```
 dukaflow/
-├── frontend/              # React + Vite Frontend Application
+├── frontend/
 │   ├── src/
-│   │   ├── components/    # Reusable UI components
-│   │   ├── pages/         # Page components
-│   │   ├── services/      # API service layer
-│   │   ├── hooks/         # Custom React hooks
-│   │   ├── utils/         # Utility functions
-│   │   └── context/       # React Context providers
-│   ├── public/            # Static assets
-│   ├── package.json
+│   │   ├── components/       # ClerkProvider, Skeleton, ReceiptView, etc.
+│   │   ├── hooks/            # useCurrentUser, useDashboardQuery, useSocket, etc.
+│   │   ├── pages/            # Dashboard, Inventory, Sales, Workers, Settings, etc.
+│   │   ├── utils/            # formatters, permissions
+│   │   ├── App.jsx           # Routes & layout
+│   │   └── index.css         # Tailwind + custom styles
 │   └── vite.config.js
 │
-├── backend/               # Node.js + Express Backend API
-│   ├── config/            # Database, auth, email configs
-│   ├── models/            # Mongoose schemas
-│   ├── controllers/       # Route controllers
-│   ├── routes/            # API routes
-│   ├── middleware/        # Auth, validation middleware
-│   ├── services/          # Business logic services
-│   ├── jobs/              # Cron jobs (6 automated tasks)
-│   ├── sockets/           # Socket.io real-time setup
-│   ├── utils/             # Helper utilities
-│   └── package.json
+├── backend/
+│   ├── config/               # database.js, mail.js (Ethereal/Gmail)
+│   ├── controllers/          # auth, products, sales, workers, dashboard
+│   ├── middleware/            # clerkAuth, auth, validation
+│   ├── models/               # Shop, User, Product, Sale, Notification
+│   ├── routes/               # API route definitions
+│   ├── services/             # cronService, dashboardSocket
+│   ├── sockets/              # Socket.IO initialization & room management
+│   └── index.js              # Express app entry point
 │
-└── README.md              # This file
+└── README.md
 ```
 
 ---
 
-## 🚀 QUICK START
+## Quick Start
 
 ### Prerequisites
-- Node.js 18+ installed
-- MongoDB installed or MongoDB Atlas account
-- npm or yarn package manager
+- Node.js 18+
+- MongoDB Atlas account (or local MongoDB)
+- Clerk account ([clerk.com](https://clerk.com)) for authentication
 
-### 1️⃣ Setup Frontend
+### 1. Clone & Install
 
 ```bash
-cd frontend
-npm install
-npm run dev
+git clone https://github.com/Cashkid12/DukaFlow.git
+cd DukaFlow
 ```
 
-Frontend will be available at: **http://localhost:5173**
-
-### 2️⃣ Setup Backend
-
-Open a new terminal:
+### 2. Backend Setup
 
 ```bash
 cd backend
 npm install
 ```
 
-Create `.env` file (copy from `.env.example`):
-
-```bash
-cp .env.example .env
-```
-
-Update the `.env` file with your MongoDB connection string:
+Create `backend/.env`:
 
 ```env
 PORT=5000
-MONGODB_URI=mongodb://localhost:27017/dukaflow
-JWT_SECRET=your_super_secret_jwt_key_change_this
+MONGODB_URI=mongodb+srv://<user>:<pass>@cluster0.xxxxx.mongodb.net/dukaflow
+JWT_SECRET=your_secret_key
 JWT_EXPIRE=7d
 NODE_ENV=development
 
-EMAIL_HOST=smtp.gmail.com
+# Clerk
+CLERK_SECRET_KEY=sk_test_xxxxx
+CLERK_WEBHOOK_SECRET=whsec_xxxxx
+
+# Email (auto-creates Ethereal test account in development)
+EMAIL_HOST=smtp.ethereal.email
 EMAIL_PORT=587
 EMAIL_USER=your_email@gmail.com
 EMAIL_PASS=your_app_password
 
+# Frontend URLs (comma-separated)
 CLIENT_URL=http://localhost:5173
 ```
 
-Start the backend server:
+> **Email testing:** In development, if `EMAIL_USER` is left as placeholder, the app auto-creates an [Ethereal](https://ethereal.email) test account. Sent emails won't be delivered — instead, a **preview URL** is logged to the terminal. Open it in a browser to view the email.
+
+Start the backend:
 
 ```bash
 npm run dev
 ```
 
-Backend API will be available at: **http://localhost:5000**
+Backend API: **http://localhost:5000**
+
+### 3. Frontend Setup
+
+```bash
+cd frontend
+npm install
+```
+
+Create `frontend/.env`:
+
+```env
+VITE_API_URL=http://localhost:5000/api
+VITE_SOCKET_URL=http://localhost:5000
+VITE_CLERK_PUBLISHABLE_KEY=pk_test_xxxxx
+```
+
+Start the dev server:
+
+```bash
+npm run dev
+```
+
+Frontend: **http://localhost:5173**
 
 ---
 
-## 🎨 FEATURES
+## Features
 
-### ✅ Frontend Features
-- **Landing Page** - Conversion-optimized with animations
-- **Authentication** - Sign In & Multi-step Sign Up
-- **Dashboard** - Real-time stats, charts, alerts
-- **Inventory Management** - Product CRUD, filters, search
-- **Sales/POS** - Point of Sale interface, transaction history
-- **Worker Management** - Team management, performance tracking
-- **Reports** - Daily, weekly, monthly analytics
-- **Settings** - Shop profile, billing, multi-branch
-- **Super Admin Panel** - Platform management
+### Dashboard
+- Real-time sales, profit, and transaction stats
+- Low stock alerts and expiry warnings
+- Worker activity overview
+- Auto-refresh every 60s + Socket.IO real-time updates
 
-### ✅ Backend Features
-- **RESTful API** - Complete CRUD operations
-- **JWT Authentication** - Secure token-based auth
-- **Multi-Tenancy** - Shop-based data isolation
-- **6 Automated Cron Jobs:**
-  - Daily Reports (9:00 PM EAT)
-  - Weekly Reports (Monday 8:00 AM EAT)
-  - Monthly P&L (1st of month 8:00 AM EAT)
-  - Low Stock Checks (Every 2 hours)
-  - Expiry Alerts (Daily 8:00 AM EAT)
-  - Trial Expiry (Daily midnight)
-- **Real-Time Updates** - Socket.io integration
-- **Email Notifications** - Automated reports & alerts
+### Inventory Management
+- Product CRUD with images, categories, custom attributes
+- Stock tracking with low-stock alerts
+- CSV import/export
+- Filters by category, stock status, search
+- Price and stock history per product
 
----
+### Sales / POS
+- Fast point-of-sale interface with product search
+- Cart with discounts, payment methods (Cash, M-Pesa, Card)
+- Credit sales with customer tracking
+- Receipt generation (print + WhatsApp share)
+- Transaction history with export
 
-## 🛠️ TECH STACK
+### Worker Management
+- Invite workers via email (token-based, 7-day expiry)
+- Role-based access: Admin, Manager, Cashier
+- Performance tracking (daily, weekly, monthly)
+- Active session monitoring & force logout
+- Permission management per role
 
-### Frontend
-- **React 19** - UI framework
-- **Vite** - Build tool
-- **Tailwind CSS** - Styling
-- **React Router** - Navigation
-- **Recharts** - Data visualization
-- **Socket.io Client** - Real-time updates
-- **Axios** - HTTP client
-- **Lucide React** - Icons
+### Reports
+- Daily, weekly, monthly sales reports
+- Profit & loss statements
+- Top products analysis
+- Export to CSV
 
-### Backend
-- **Node.js** - Runtime
-- **Express** - Web framework
-- **MongoDB + Mongoose** - Database
-- **JWT** - Authentication
-- **Socket.io** - Real-time server
-- **Node-Cron** - Scheduled tasks
-- **Nodemailer** - Email service
-- **bcryptjs** - Password hashing
-
----
-
-## 📊 DATABASE SCHEMAS
-
-### Shop
-- Business profile, settings, subscription
+### Settings
+- Shop profile & branding
 - Multi-branch support
 - Custom categories & attributes
 
-### User
-- Authentication, roles, permissions
-- Active session tracking
-- Worker management
+---
 
-### Product
-- Inventory tracking
-- Stock alerts, expiry dates
-- Custom attributes (size, color, etc.)
+## Worker Invitation Flow
 
-### Sale/Transaction
-- POS transactions
-- Payment methods (Cash, M-Pesa, Card)
-- Profit calculations
+1. Admin fills "Add Worker" form → clicks "Send Invitation"
+2. Backend creates a pending worker in MongoDB with a unique token (7-day expiry)
+3. Backend sends a branded HTML email via Nodemailer
+4. Worker clicks the link → sees invitation details (shop name, role, inviter)
+5. Worker clicks "Accept & Create Account" → Clerk sign-up (Google/Apple)
+6. After sign-up, worker is auto-linked to the shop, status changes to "active"
+7. Worker appears as "Active" on the Workers page (real-time via Socket.IO)
 
-### Notification
-- Real-time alerts
-- Email notifications
-- User preferences
+**Email testing (development):** Uses [Ethereal](https://ethereal.email) — no real emails are sent. Check the terminal for a preview URL after sending.
 
 ---
 
-## 🎯 KEY FEATURES
+## API Routes
 
-### Multi-Tenancy Architecture
-- Each shop gets isolated data
-- Shop-specific rooms for real-time updates
-- Subdomain routing ready (`[shop].dukaflow.com`)
-
-### Real-Time Features
-- Live stock updates
-- Instant sale notifications
-- Worker activity tracking
-- Alert system
-
-### Automated Reporting
-- Daily sales summaries via email
-- Weekly performance insights
-- Monthly P&L statements
-- Smart alerts (low stock, expiry)
-
-### Security
-- JWT authentication with HTTP-only cookies
-- Password hashing (bcrypt)
-- Session management
-- Role-based access control
-
----
-
-## 📱 PAGES & ROUTES
-
-### Public Routes
-- `/` - Landing page
-- `/signin` - Login
-- `/signup` - Multi-step registration
-
-### Dashboard Routes
-- `/dashboard` - Overview
-- `/dashboard/inventory` - Product management
-- `/dashboard/sales` - Sales & POS
-- `/dashboard/workers` - Team management
-- `/dashboard/reports` - Analytics
-- `/dashboard/settings` - Configuration
-
-### Admin Routes
-- `/admin` - Super admin panel
+| Method | Route | Description |
+|--------|-------|-------------|
+| `GET` | `/api/auth/me/clerk` | Current user profile (Clerk) |
+| `GET` | `/api/auth/onboarding-status` | Check if user has a shop |
+| `GET` | `/api/dashboard` | Dashboard stats & metrics |
+| `GET` | `/api/products` | List products (with filters) |
+| `POST` | `/api/products` | Create product |
+| `PUT` | `/api/products/:id` | Update product |
+| `DELETE` | `/api/products/:id` | Delete product |
+| `GET` | `/api/products/stats` | Inventory statistics |
+| `POST` | `/api/sales` | Record a sale |
+| `GET` | `/api/sales` | List sales/transactions |
+| `GET` | `/api/workers` | List workers with performance stats |
+| `POST` | `/api/workers/invite` | Invite a new worker (sends email) |
+| `GET` | `/api/workers/verify-invitation` | Verify invitation token (public) |
+| `POST` | `/api/workers/accept-invitation` | Accept invitation after sign-up |
+| `POST` | `/api/workers/:id/resend-invite` | Resend invitation email |
+| `DELETE` | `/api/workers/:id/cancel-invite` | Cancel pending invitation |
+| `DELETE` | `/api/workers/:id` | Remove worker (soft delete) |
+| `GET` | `/api/workers/:id/performance` | Worker chart data |
+| `GET` | `/api/workers/:id/transactions` | Worker's recent transactions |
+| `GET` | `/api/workers/:id/activity` | Worker activity log |
+| `POST` | `/api/auth/workers/:id/force-logout` | Force logout worker sessions |
+| `GET` | `/api/shop/me` | Current shop details |
+| `PUT` | `/api/shop/me` | Update shop settings |
 
 ---
 
-## 🔧 CONFIGURATION
+## Real-Time (Socket.IO)
 
-### Environment Variables
+Clients join a shop-specific room (`join:shop <shopId>`) and receive scoped events:
 
-**Frontend (.env):**
-```env
-VITE_API_URL=http://localhost:5000/api
-```
-
-**Backend (.env):**
-```env
-PORT=5000
-MONGODB_URI=mongodb://localhost:27017/dukaflow
-JWT_SECRET=your_secret_key
-JWT_EXPIRE=7d
-NODE_ENV=development
-EMAIL_HOST=smtp.gmail.com
-EMAIL_PORT=587
-EMAIL_USER=your_email@gmail.com
-EMAIL_PASS=your_app_password
-CLIENT_URL=http://localhost:5173
-```
+| Event | Trigger | Pages Affected |
+|-------|---------|----------------|
+| `product:created` | New product added | Inventory, Sales, Dashboard |
+| `product:updated` | Product modified | Inventory, Sales, Dashboard |
+| `product:deleted` | Product removed | Inventory, Sales, Dashboard |
+| `stock:updated` | Stock level changed | Inventory, Sales, Dashboard |
+| `sale:completed` | Sale recorded | Sales, Inventory, Dashboard, Workers |
+| `worker:invited` | Worker invited | Workers |
+| `worker:accepted` | Worker accepted invitation | Workers |
+| `worker:cancelled` | Invitation cancelled | Workers |
+| `worker:role-changed` | Worker role updated | Workers, WorkerDetail |
+| `worker:session-terminated` | Sessions force-logged out | WorkerDetail |
+| `worker:removed` | Worker removed | WorkerDetail |
+| `dashboard:update` | Stats changed | Dashboard |
 
 ---
 
-## 🚀 DEPLOYMENT
+## Pages & Routes
+
+| Route | Page | Auth |
+|-------|------|------|
+| `/` | Landing Page | Public |
+| `/sign-in` | Sign In (Clerk) | Public |
+| `/sign-up` | Sign Up (Clerk) | Public |
+| `/accept-invitation` | Worker invitation acceptance | Public |
+| `/auth-resolve` | Post-auth redirect handler | Clerk |
+| `/onboarding` | Shop setup wizard | Clerk |
+| `/dashboard` | Dashboard overview | Clerk |
+| `/dashboard/inventory` | Inventory management | Clerk |
+| `/dashboard/inventory/add` | Add product | Clerk |
+| `/dashboard/inventory/:id` | Product detail | Clerk |
+| `/dashboard/sales` | Sales / POS | Clerk |
+| `/dashboard/workers` | Worker management | Clerk |
+| `/dashboard/workers/:id` | Worker detail & permissions | Clerk |
+| `/dashboard/reports` | Reports & analytics | Clerk |
+| `/dashboard/settings` | Shop settings | Clerk |
+
+---
+
+## Design System
+
+| Token | Value | Usage |
+|-------|-------|-------|
+| **Primary** | `#312E81` (Indigo) | Buttons, links, active states |
+| **Accent** | `#E8835C` (Terracotta) | CTAs, highlights |
+| **Success** | `#10B981` | Positive states, M-Pesa |
+| **Warning** | `#F59E0B` | Alerts, pending states |
+| **Danger** | `#EF4444` | Errors, destructive actions |
+
+- **Font:** Inter (UI), JetBrains Mono (numbers)
+- **Icons:** Lucide React
+- **Styling:** Tailwind CSS 4 with `@theme` directive
+
+---
+
+## Deployment
 
 ### Frontend (Vercel)
 ```bash
 cd frontend
 npm run build
-vercel --prod
+npx vercel --prod
 ```
 
-### Backend (Railway/Render)
-```bash
-cd backend
-# Set environment variables in dashboard
-npm start
-```
+### Backend (Render / Railway)
+1. Push to GitHub
+2. Connect repo to Render/Railway
+3. Set environment variables in the platform dashboard
+4. Deploy — `npm start` is the start command
 
 ### Database (MongoDB Atlas)
-1. Create cluster at mongodb.com/cloud/atlas
-2. Whitelist server IP
-3. Get connection string
-4. Update `MONGODB_URI` in backend `.env`
+1. Create a cluster at [mongodb.com/cloud/atlas](https://mongodb.com/cloud/atlas)
+2. Whitelist server IP (or allow all for testing)
+3. Copy the connection string to `MONGODB_URI`
 
 ---
 
-## 📚 DOCUMENTATION
+## Environment Variables Summary
 
-- **[Complete Implementation Guide](COMPLETE_IMPLEMENTATION.md)** - Full technical details
-- **[Deployment Guide](DEPLOYMENT.md)** - Production setup
-- **[Quick Start Guide](QUICKSTART.md)** - Get started in 5 minutes
-- **[Auth Pages Improvements](AUTH_PAGES_IMPROVEMENTS.md)** - Design updates
+### Backend `.env`
 
----
+| Variable | Description | Required |
+|----------|-------------|----------|
+| `PORT` | Server port (default: 5000) | No |
+| `MONGODB_URI` | MongoDB connection string | Yes |
+| `JWT_SECRET` | JWT signing secret | Yes |
+| `NODE_ENV` | `development` or `production` | Yes |
+| `CLERK_SECRET_KEY` | Clerk API secret key | Yes |
+| `CLERK_WEBHOOK_SECRET` | Clerk webhook signing secret | Yes |
+| `EMAIL_HOST` | SMTP host | Dev: auto (Ethereal) |
+| `EMAIL_PORT` | SMTP port | Dev: auto (Ethereal) |
+| `EMAIL_USER` | SMTP username | Dev: optional |
+| `EMAIL_PASS` | SMTP password | Dev: optional |
+| `CLIENT_URL` | Allowed frontend origins (comma-separated) | Yes |
 
-## 🎨 DESIGN SYSTEM
+### Frontend `.env`
 
-### Colors
-- **Primary:** Indigo (#312E81)
-- **Accent:** Terracotta (#E8835C)
-- **Success:** Green (#10B981)
-- **Warning:** Amber (#F59E0B)
-- **Danger:** Red (#EF4444)
-- **M-Pesa:** Green (#43B02A)
-
-### Typography
-- **Font:** Inter (sans-serif)
-- **Numbers:** JetBrains Mono (monospace)
-
-### Components
-- Buttons, Cards, Badges, Forms
-- Modal, Drawer, Switch
-- Navigation (Sidebar, TopBar, MobileNav)
+| Variable | Description | Required |
+|----------|-------------|----------|
+| `VITE_API_URL` | Backend API base URL | Yes |
+| `VITE_SOCKET_URL` | Socket.IO server URL | Yes |
+| `VITE_CLERK_PUBLISHABLE_KEY` | Clerk publishable key | Yes |
 
 ---
 
-## 🧪 TESTING
+## License
 
-### Run Frontend Tests
-```bash
-cd frontend
-npm test
-```
-
-### Run Backend Tests
-```bash
-cd backend
-npm test
-```
+Proprietary. All rights reserved.
 
 ---
 
-## 🤝 CONTRIBUTING
-
-1. Fork the repository
-2. Create feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit changes (`git commit -m 'Add amazing feature'`)
-4. Push to branch (`git push origin feature/amazing-feature`)
-5. Open Pull Request
-
----
-
-## 📄 LICENSE
-
-This project is proprietary software. All rights reserved.
-
----
-
-## 📞 SUPPORT
-
-- **Email:** support@dukaflow.com
-- **Documentation:** [Complete Implementation Guide](COMPLETE_IMPLEMENTATION.md)
-- **Issues:** GitHub Issues
-
----
-
-## 🎉 CREDITS
-
-Built with ❤️ for Kenyan Dukas
-
-**Run Your Duka, Smarter.**
-
----
-
-## 📊 PROJECT STATUS
-
-✅ **COMPLETE** - Production Ready
-
-- 11 Pages implemented
-- 6 Automated cron jobs
-- Real-time Socket.io integration
-- Complete API layer
-- Multi-tenant architecture
-- Deployment configurations
-
-**Last Updated:** April 8, 2026
+**Built with care for Kenyan dukas.**

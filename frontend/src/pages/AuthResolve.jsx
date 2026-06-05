@@ -31,6 +31,13 @@ export default function AuthResolve() {
 
     const resolve = async () => {
       try {
+        // ── Priority: Check for pending invitation acceptance ──────────────
+        const invitationToken = sessionStorage.getItem('dukaflow_invitation_token');
+        if (invitationToken) {
+          navigate(`/accept-invitation?token=${invitationToken}&mode=complete`, { replace: true });
+          return;
+        }
+
         const token = await getToken();
         if (!token) {
           // No token — Clerk redirect will handle it

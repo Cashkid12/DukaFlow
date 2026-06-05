@@ -15,6 +15,9 @@ import { io } from 'socket.io-client';
  * - worker:session-terminated → User logged out on that device
  * - worker:removed → User cannot access shop anymore
  * - worker:reactivated → User can access shop again
+ * - product:created → New product added, update stats
+ * - product:updated → Product modified, recalculate stats
+ * - product:deleted → Product removed, recalculate stats
  */
 
 const SOCKET_URL = import.meta.env.VITE_SOCKET_URL || 'http://localhost:5000';
@@ -34,7 +37,7 @@ export const useSocket = (shopId, callbacks = {}) => {
     // Join shop room
     socket.on('connect', () => {
       console.log('✅ Socket connected:', socket.id);
-      socket.emit('join_shop', shopId);
+      socket.emit('join:shop', shopId);
     });
 
     // Listen for real-time events
@@ -51,6 +54,11 @@ export const useSocket = (shopId, callbacks = {}) => {
     socket.on('worker:login', (data) => {
       console.log('👤 Worker logged in:', data);
       callbacks.onWorkerLogin?.(data);
+    });
+
+    socket.on('worker:logout', (data) => {
+      console.log('👤 Worker logged out:', data);
+      callbacks.onWorkerLogout?.(data);
     });
 
     socket.on('alert:new', (data) => {
@@ -81,6 +89,22 @@ export const useSocket = (shopId, callbacks = {}) => {
     socket.on('worker:reactivated', (data) => {
       console.log('✅ Worker reactivated:', data);
       callbacks.onWorkerReactivated?.(data);
+    });
+
+    // Product lifecycle events — keep dashboard stats in sync
+    socket.on('product:created', (data) => {
+      console.log('➕ Product created:', data?.productId);
+      callbacks.onProductCreated?.(data);
+    });
+
+    socket.on('product:updated', (data) => {
+      console.log('✏️ Product updated:', data?.productId);
+      callbacks.onProductUpdated?.(data);
+    });
+
+    socket.on('product:deleted', (data) => {
+      console.log('🗑️ Product deleted:', data?.productId);
+      callbacks.onProductDeleted?.(data);
     });
 
     socket.on('disconnect', () => {

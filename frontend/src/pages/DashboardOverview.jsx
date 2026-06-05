@@ -1,4 +1,5 @@
 import React, { useState, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   TrendingUp, DollarSign, AlertTriangle, Users,
   ArrowUpRight, ArrowDownRight, Plus, X,
@@ -15,8 +16,10 @@ import { useCurrentUser } from '../hooks/useCurrentUser';
 import { canViewProfit, canViewWorkers, ROLES } from '../utils/permissions';
 
 const DashboardOverview = () => {
+  const navigate = useNavigate();
   const [fabOpen, setFabOpen] = useState(false);
-  const { data, isLoading, isError, error, invalidate, refetch } = useDashboardQuery();
+  const [bannerDismissed, setBannerDismissed] = useState(false);
+  const { data, isLoading, isError, invalidate, refetch } = useDashboardQuery();
   const { user } = useUser();
   const { data: currentUser } = useCurrentUser();
   const role = currentUser?.role || ROLES.ADMIN;
@@ -32,7 +35,11 @@ const DashboardOverview = () => {
     onSaleCompleted: () => { invalidate(); },
     onStockUpdated: () => { invalidate(); },
     onWorkerLogin: () => { invalidate(); },
+    onWorkerLogout: () => { invalidate(); },
     onAlertNew: () => { invalidate(); },
+    onProductCreated: () => { invalidate(); },
+    onProductUpdated: () => { invalidate(); },
+    onProductDeleted: () => { invalidate(); },
   }), [invalidate]);
   useSocket(shopId, socketCallbacks);
 
@@ -136,87 +143,84 @@ const DashboardOverview = () => {
 
     return (
       <div className="space-y-6 animate-fade-in">
-        {/* Welcome Banner */}
-        <div className="bg-gradient-to-r from-[#312E81] to-[#6366F1] rounded-2xl p-6 sm:p-8 text-white">
-          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
-            <div className="w-14 h-14 rounded-xl bg-white/20 flex items-center justify-center flex-shrink-0">
-              <Store size={28} className="text-white" />
-            </div>
-            <div className="flex-1">
-              <h2 className="text-xl sm:text-2xl font-bold mb-1">
-                Welcome, {welcomeName}!
-              </h2>
-              <p className="text-white/80 text-sm sm:text-base">
-                {shopName !== 'Your Shop'
-                  ? `${shopName} is all set up. `
-                  : 'Your shop is all set up. '}
-                Start by adding products to your inventory.
-              </p>
-            </div>
-          </div>
-          <div className="flex flex-col sm:flex-row gap-3 mt-5">
-            <button
-              onClick={() => window.location.href = '/dashboard/inventory'}
-              className="flex items-center justify-center gap-2 px-5 py-3 bg-white text-[#312E81] font-semibold rounded-xl hover:bg-white/90 transition-all text-sm"
-            >
-              <Plus size={18} />
-              Add Your First Product
-            </button>
-            {role === ROLES.ADMIN && (
-            <button
-              onClick={() => window.location.href = '/dashboard/workers'}
-              className="flex items-center justify-center gap-2 px-5 py-3 bg-white/20 text-white font-semibold rounded-xl hover:bg-white/30 transition-all text-sm border border-white/30"
-            >
-              <UserPlus size={18} />
-              Invite Workers
-            </button>
-            )}
-          </div>
-        </div>
-
-        {/* Centered Welcome Message */}
+        {/* Centered Welcome with Action Cards */}
         <div className="flex items-center justify-center">
-          <div className="w-full max-w-[450px] text-center px-4 sm:px-0 py-8 sm:py-12">
-            <Package size={48} className="mx-auto text-neutral-300 sm:hidden" />
-            <Package size={64} className="mx-auto text-neutral-300 hidden sm:block" />
+          <div className="w-full max-w-[520px] text-center px-4 sm:px-0 py-8 sm:py-12">
+            <Package size={48} className="mx-auto text-neutral-200 sm:hidden" />
+            <Package size={64} className="mx-auto text-neutral-200 hidden sm:block" />
             <h3 className="text-[20px] sm:text-2xl font-bold text-neutral-900 mt-5">
               Welcome to Your Dashboard, {welcomeName}!
             </h3>
-            <p className="text-[14px] sm:text-base text-neutral-500 mt-2 max-w-[450px] mx-auto text-center">
-              Your shop is set up and ready to go. Add your first product to start tracking inventory and sales.
+            <p className="text-[14px] sm:text-base text-neutral-500 mt-2 max-w-[400px] mx-auto text-center">
+              Your shop is set up and ready to go. What would you like to do first?
             </p>
-            <div className="flex flex-col sm:flex-row gap-3 justify-center mt-7">
-              <button
-                onClick={() => window.location.href = '/dashboard/inventory'}
-                className="flex items-center justify-center gap-2 px-5 py-3 bg-[#312E81] hover:bg-[#1E1B4B] text-white font-semibold rounded-xl transition-all text-sm shadow-md w-full sm:w-auto"
-              >
-                <Package size={18} />
-                Add Your First Product
-              </button>
-              {role === ROLES.ADMIN && (
-              <button
-                onClick={() => window.location.href = '/dashboard/workers'}
-                className="flex items-center justify-center gap-2 px-5 py-3 bg-white border-[1.5px] border-neutral-300 text-neutral-700 font-semibold rounded-xl hover:bg-neutral-50 transition-all text-sm w-full sm:w-auto"
-              >
-                <Users size={18} />
-                Invite Workers
-              </button>
-              )}
-            </div>
-            <a
-              href="#"
-              className="inline-block mt-6 text-[14px] text-[#312E81] font-medium hover:underline"
-              onClick={(e) => { e.preventDefault(); }}
-            >
-              Need help? View our quick start guide &rarr;
-            </a>
           </div>
         </div>
 
+        {/* Action Cards — Add Product + Invite Workers */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-[720px] mx-auto">
+          {/* Add Product Card */}
+          <div
+            className="bg-white rounded-2xl border border-neutral-200 p-7 cursor-pointer hover:border-[#312E81] hover:shadow-md transition-all duration-200 hover:-translate-y-0.5 group"
+            onClick={() => navigate('/dashboard/inventory/add')}
+          >
+            <div className="w-14 h-14 rounded-xl bg-[#EEF2FF] flex items-center justify-center mb-4">
+              <Package size={32} style={{ color: '#312E81' }} />
+            </div>
+            <h4 className="text-lg font-semibold text-neutral-900 mb-2">
+              Add Your First Product
+            </h4>
+            <p className="text-sm text-neutral-500 mb-5 max-w-[250px]">
+              Start tracking inventory and get insights on your bestsellers.
+            </p>
+            <button className="flex items-center justify-center gap-2 w-full px-5 py-3 bg-[#312E81] hover:bg-[#1E1B4B] text-white font-semibold rounded-xl transition-all text-sm">
+              <Plus size={18} />
+              Add Product
+              <ArrowUpRight size={16} className="opacity-0 group-hover:opacity-100 transition-opacity" />
+            </button>
+          </div>
+
+          {/* Invite Workers Card */}
+          {role === ROLES.ADMIN && (
+          <div
+            className="bg-white rounded-2xl border border-neutral-200 p-7 cursor-pointer hover:border-[#312E81] hover:shadow-md transition-all duration-200 hover:-translate-y-0.5 group"
+            onClick={() => navigate('/dashboard/workers')}
+          >
+            <div className="w-14 h-14 rounded-xl bg-purple-50 flex items-center justify-center mb-4">
+              <Users size={32} style={{ color: '#8B5CF6' }} />
+            </div>
+            <h4 className="text-lg font-semibold text-neutral-900 mb-2">
+              Invite Your Workers
+            </h4>
+            <p className="text-sm text-neutral-500 mb-5 max-w-[250px]">
+              Add your staff to help manage the duka and track performance.
+            </p>
+            <button className="flex items-center justify-center gap-2 w-full px-5 py-3 bg-white border-[1.5px] border-neutral-300 text-neutral-700 font-semibold rounded-xl hover:bg-neutral-50 hover:border-[#312E81] transition-all text-sm">
+              <UserPlus size={18} />
+              Invite Workers
+              <ArrowUpRight size={16} className="opacity-0 group-hover:opacity-100 transition-opacity" />
+            </button>
+          </div>
+          )}
+        </div>
+
+        {/* Skip Link */}
+        <div className="text-center">
+          <button
+            onClick={() => {
+              const el = document.getElementById('empty-stat-cards');
+              if (el) el.scrollIntoView({ behavior: 'smooth' });
+            }}
+            className="text-sm text-[#312E81] font-medium hover:underline"
+          >
+            Skip for now &mdash; go to empty dashboard &rarr;
+          </button>
+        </div>
+
         {/* Stat Cards — all zeros */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-4">
+        <div id="empty-stat-cards" className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-4">
           {/* Today's Sales */}
-          <div className="bg-white rounded-xl border border-neutral-100 p-4 sm:p-5">
+          <div className="bg-white rounded-2xl border border-neutral-100 p-4 sm:p-5">
             <div className="flex items-start justify-between mb-3">
               <div>
                 <p className="text-xs font-medium text-neutral-500 uppercase tracking-wide">Today&apos;s Sales</p>
@@ -235,7 +239,7 @@ const DashboardOverview = () => {
           {/* Today's Profit — hidden for cashiers */}
           {showProfit && (
           <div
-            className="bg-white rounded-xl border border-neutral-100 p-4 sm:p-5"
+            className="bg-white rounded-2xl border border-neutral-100 p-4 sm:p-5"
             style={{
               borderLeft: '4px solid #E8835C',
               background: 'linear-gradient(135deg, #FFF7ED 0%, #FFFFFF 100%)',
@@ -258,7 +262,7 @@ const DashboardOverview = () => {
           )}
 
           {/* Low Stock */}
-          <div className="bg-white rounded-xl border border-neutral-100 p-4 sm:p-5">
+          <div className="bg-white rounded-2xl border border-neutral-100 p-4 sm:p-5">
             <div className="flex items-start justify-between mb-3">
               <div>
                 <p className="text-xs font-medium text-neutral-500 uppercase tracking-wide">Low Stock</p>
@@ -272,7 +276,7 @@ const DashboardOverview = () => {
           </div>
 
           {/* Active Workers */}
-          <div className="bg-white rounded-xl border border-neutral-100 p-4 sm:p-5">
+          <div className="bg-white rounded-2xl border border-neutral-100 p-4 sm:p-5">
             <div className="flex items-start justify-between mb-3">
               <div>
                 <p className="text-xs font-medium text-neutral-500 uppercase tracking-wide">Active Workers</p>
@@ -290,11 +294,11 @@ const DashboardOverview = () => {
         </div>
 
         {/* Empty Chart */}
-        <div className="bg-white rounded-xl border border-neutral-200 p-6">
+        <div className="bg-white rounded-2xl border border-neutral-200 p-6">
           <div className="mb-6">
             <h2 className="text-lg font-semibold text-neutral-900">Last 7 Days Performance</h2>
           </div>
-          <div className="h-64 flex flex-col items-center justify-center">
+          <div className="h-[200px] md:h-[300px] flex flex-col items-center justify-center">
             <BarChart3 size={48} className="text-neutral-200 mb-4" />
             <p className="text-[14px] text-neutral-400 font-medium">No sales data yet</p>
             <p className="text-[13px] text-neutral-400 mt-1">Sales will appear here once you start recording</p>
@@ -308,12 +312,12 @@ const DashboardOverview = () => {
   return (
     <div className="space-y-6 animate-fade-in">
       {/* First-time Welcome Banner (dismissible) */}
-      {isFirstTime && (
+      {isFirstTime && !bannerDismissed && (
         <div className="bg-gradient-to-r from-[#312E81] to-[#6366F1] rounded-2xl p-6 sm:p-8 text-white relative">
           <button
             onClick={() => {
               localStorage.removeItem('onboarding_step2');
-              window.location.reload();
+              setBannerDismissed(true);
             }}
             className="absolute top-4 right-4 w-8 h-8 rounded-lg bg-white/10 hover:bg-white/20 flex items-center justify-center transition-colors"
             aria-label="Dismiss welcome banner"
@@ -345,7 +349,7 @@ const DashboardOverview = () => {
       {/* Stat Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {/* Today's Sales */}
-        <div className="bg-white rounded-xl border border-neutral-100 p-5 hover:shadow-md hover:-translate-y-0.5 transition-all duration-200">
+        <div className="bg-white rounded-2xl border border-neutral-100 p-5 hover:shadow-md hover:-translate-y-0.5 transition-all duration-200">
           <div className="flex items-start justify-between mb-3">
             <div>
               <p className="text-[13px] font-medium text-neutral-500 uppercase tracking-wide">{isCashier ? 'My Sales Today' : 'Today&apos;s Sales'}</p>
@@ -364,7 +368,7 @@ const DashboardOverview = () => {
         {/* Today's Profit (Highlighted) — hidden for cashier, show "—" for manager */}
         {showProfit && (
         <div
-          className="bg-white rounded-xl border border-neutral-100 p-5 hover:shadow-md hover:-translate-y-0.5 transition-all duration-200"
+          className="bg-white rounded-2xl border border-neutral-100 p-5 hover:shadow-md hover:-translate-y-0.5 transition-all duration-200"
           style={{
             borderLeft: '4px solid #E8835C',
             background: 'linear-gradient(135deg, #FDF2EC 0%, #FFFFFF 100%)',
@@ -390,8 +394,8 @@ const DashboardOverview = () => {
 
         {/* Low Stock Items */}
         <div
-          className="bg-white rounded-xl border border-neutral-100 p-5 hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 cursor-pointer"
-          onClick={() => window.location.href = '/dashboard/inventory?filter=low-stock'}
+          className="bg-white rounded-2xl border border-neutral-100 p-5 hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 cursor-pointer"
+          onClick={() => navigate('/dashboard/inventory?filter=low-stock')}
         >
           <div className="flex items-start justify-between mb-3">
             <div>
@@ -416,7 +420,7 @@ const DashboardOverview = () => {
         </div>
 
         {/* Active Workers */}
-        <div className="bg-white rounded-xl border border-neutral-100 p-5 hover:shadow-md hover:-translate-y-0.5 transition-all duration-200">
+        <div className="bg-white rounded-2xl border border-neutral-100 p-5 hover:shadow-md hover:-translate-y-0.5 transition-all duration-200">
           <div className="flex items-start justify-between mb-3">
             <div>
               <p className="text-[13px] font-medium text-neutral-500 uppercase tracking-wide">Active Workers</p>
@@ -427,42 +431,52 @@ const DashboardOverview = () => {
             </div>
           </div>
           <div className="flex items-center gap-2">
-            {/* Overlapping avatar circles */}
-            {onlineWorkers > 0 ? (
-              <div className="flex items-center -space-x-2">
-                {Array.from({ length: Math.min(onlineWorkers, 3) }).map((_, i) => (
-                  <div
-                    key={i}
-                    className="w-5 h-5 rounded-full border-2 border-white flex items-center justify-center"
-                    style={{
-                      backgroundColor: i === 0 ? '#312E81' : i === 1 ? '#E8835C' : '#8B5CF6',
-                      zIndex: 3 - i,
-                    }}
-                  >
-                    <span className="text-[8px] font-bold text-white">
-                      {String.fromCharCode(65 + i)}
-                    </span>
-                  </div>
-                ))}
-                {onlineWorkers > 3 && (
-                  <div
-                    className="w-5 h-5 rounded-full border-2 border-white bg-neutral-400 flex items-center justify-center"
-                    style={{ zIndex: 0 }}
-                  >
-                    <span className="text-[7px] font-bold text-white">+{onlineWorkers - 3}</span>
-                  </div>
-                )}
-              </div>
+            {isCashier ? (
+              /* Cashier: count only, no avatar details */
+              <>
+                <div className="w-2 h-2 rounded-full bg-green-500" />
+                <span className="text-[13px] text-neutral-500">{onlineWorkers} Active now</span>
+              </>
             ) : (
-              <div className="w-2 h-2 rounded-full bg-green-500" />
+              /* Owner/Manager: full avatar details */
+              <>
+                {onlineWorkers > 0 ? (
+                  <div className="flex items-center -space-x-2">
+                    {Array.from({ length: Math.min(onlineWorkers, 3) }).map((_, i) => (
+                      <div
+                        key={i}
+                        className="w-5 h-5 rounded-full border-2 border-white flex items-center justify-center"
+                        style={{
+                          backgroundColor: i === 0 ? '#312E81' : i === 1 ? '#E8835C' : '#8B5CF6',
+                          zIndex: 3 - i,
+                        }}
+                      >
+                        <span className="text-[8px] font-bold text-white">
+                          {String.fromCharCode(65 + i)}
+                        </span>
+                      </div>
+                    ))}
+                    {onlineWorkers > 3 && (
+                      <div
+                        className="w-5 h-5 rounded-full border-2 border-white bg-neutral-400 flex items-center justify-center"
+                        style={{ zIndex: 0 }}
+                      >
+                        <span className="text-[7px] font-bold text-white">+{onlineWorkers - 3}</span>
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <div className="w-2 h-2 rounded-full bg-green-500" />
+                )}
+                <span className="text-[13px] text-neutral-500">{onlineWorkers} Active now</span>
+              </>
             )}
-            <span className="text-[13px] text-neutral-500">{onlineWorkers} Active now</span>
           </div>
         </div>
       </div>
 
       {/* Chart Section */}
-      <div className="bg-white rounded-xl border border-neutral-200 p-6">
+      <div className="bg-white rounded-2xl border border-neutral-200 p-6">
         <div className="flex items-center justify-between mb-6">
           <h2 className="text-lg font-semibold text-neutral-900">Last 7 Days Performance</h2>
           {/* Time Tabs */}
@@ -484,14 +498,14 @@ const DashboardOverview = () => {
         </div>
 
         {chartData.length === 0 ? (
-          <div className="h-64 flex flex-col items-center justify-center">
+          <div className="h-[200px] md:h-[300px] flex flex-col items-center justify-center">
             <BarChart3 size={48} className="text-neutral-200 mb-4" />
-            <p className="text-[14px] text-neutral-400 font-medium">No sales data yet</p>
+            <p className="text-[14px] text-neutral-500 font-medium">No sales data yet</p>
             <p className="text-[13px] text-neutral-400 mt-1">Sales will appear here once you start recording</p>
           </div>
         ) : (
           <>
-            <div className="h-64">
+            <div className="h-[200px] md:h-[300px]">
               <ResponsiveContainer width="100%" height="100%">
                 <ComposedChart data={chartData}>
                   <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E2E8F0" />
@@ -523,12 +537,12 @@ const DashboardOverview = () => {
       {/* Recent Transactions & Alerts */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Recent Transactions */}
-        <div className="lg:col-span-2 bg-white rounded-xl border border-neutral-200 p-6">
+        <div className="lg:col-span-2 bg-white rounded-2xl border border-neutral-200 p-6">
           <div className="flex items-center justify-between mb-6">
             <h2 className="text-lg font-semibold text-neutral-900">Recent Transactions</h2>
-            <a href="/dashboard/sales" className="text-sm text-[#312E81] hover:underline font-medium">
+            <button onClick={() => navigate('/dashboard/sales')} className="text-sm text-[#312E81] hover:underline font-medium">
               View All &rarr;
-            </a>
+            </button>
           </div>
 
           <div className="space-y-3">
@@ -537,7 +551,13 @@ const DashboardOverview = () => {
                 <div className="w-12 h-12 rounded-full bg-neutral-100 flex items-center justify-center mx-auto mb-3">
                   <ShoppingCart size={20} className="text-neutral-400" />
                 </div>
-                <p className="text-sm text-neutral-400">No sales recorded today</p>
+                <p className="text-sm text-neutral-400 mb-3">No sales recorded today</p>
+                <button
+                  onClick={() => navigate('/dashboard/sales')}
+                  className="text-sm text-[#312E81] font-medium hover:underline"
+                >
+                  Record your first sale &rarr;
+                </button>
               </div>
             ) : (
               recentTransactions.map((txn) => (
@@ -579,7 +599,7 @@ const DashboardOverview = () => {
         </div>
 
         {/* Alerts & Warnings */}
-        <div className="bg-white rounded-xl border border-neutral-200 p-6">
+        <div className="bg-white rounded-2xl border border-neutral-200 p-6">
           <div className="flex items-center justify-between mb-6">
             <h2 className="text-base font-semibold text-neutral-900">Alerts &amp; Warnings</h2>
             {alerts.length > 0 && (
@@ -596,6 +616,7 @@ const DashboardOverview = () => {
                   <CheckCircle size={24} style={{ color: '#10B981' }} />
                 </div>
                 <p className="text-sm text-neutral-400">All clear! &#10003;</p>
+                <p className="text-[13px] text-neutral-500 mt-1">No alerts right now</p>
               </div>
             ) : (
               alerts.map((alert) => (
@@ -616,7 +637,7 @@ const DashboardOverview = () => {
                       <p className="text-sm text-neutral-700 mt-1">{alert.message}</p>
                       {alert.action && (
                         <button
-                          onClick={() => alert.action.link && (window.location.href = alert.action.link)}
+                          onClick={() => alert.action.link && navigate(alert.action.link)}
                           className="mt-2 px-3 py-1.5 text-xs font-medium text-[#312E81] border border-[#312E81] rounded-lg hover:bg-[#312E81] hover:text-white transition-all duration-200"
                         >
                           {alert.action.label}
@@ -633,14 +654,14 @@ const DashboardOverview = () => {
 
       {/* Worker Performance — hidden for cashiers */}
       {showWorkers && (
-      <div className="bg-white rounded-xl border border-neutral-200 p-6">
+      <div className="bg-white rounded-2xl border border-neutral-200 p-6">
         <div className="flex items-center justify-between mb-6">
           <div>
             <h2 className="text-base font-semibold text-neutral-900">Worker Performance Today</h2>
           </div>
-          <a href="/dashboard/workers" className="text-sm text-[#312E81] hover:underline font-medium">
+          <button onClick={() => navigate('/dashboard/workers')} className="text-sm text-[#312E81] hover:underline font-medium">
             View All Workers &rarr;
-          </a>
+          </button>
         </div>
 
         {activeWorkers <= 1 ? (
@@ -652,12 +673,12 @@ const DashboardOverview = () => {
             <p className="text-sm text-neutral-500 mb-4">
               You haven&apos;t added workers yet.
             </p>
-            <a
-              href="/dashboard/workers"
+            <button
+              onClick={() => navigate('/dashboard/workers')}
               className="inline-flex items-center gap-1.5 text-sm font-medium text-[#312E81] hover:underline"
             >
               Invite your staff &rarr;
-            </a>
+            </button>
           </div>
         ) : workerPerformance.length === 0 ? (
           /* Workers exist but no sales today */
@@ -670,7 +691,7 @@ const DashboardOverview = () => {
         ) : (
           <>
             {/* Desktop: Horizontal Scroll Cards */}
-            <div className="hidden md:flex gap-4 overflow-x-auto pb-2">
+            <div className="hidden md:flex gap-3 overflow-x-auto pb-2">
               {workerPerformance.map((worker) => (
                 <div
                   key={worker._id}
@@ -679,13 +700,13 @@ const DashboardOverview = () => {
                 >
                   <div className="text-center mb-3">
                     <div className="relative inline-block">
-                      <div className="w-12 h-12 rounded-full bg-[#EEF2FF] flex items-center justify-center">
-                        <span className="text-base font-semibold text-[#312E81]">
+                      <div className="w-10 h-10 rounded-full bg-[#EEF2FF] flex items-center justify-center">
+                        <span className="text-sm font-semibold text-[#312E81]">
                           {(worker.name || '?').charAt(0)}
                         </span>
                       </div>
                       {worker.status === 'online' && (
-                        <div className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 rounded-full border-2 border-white" />
+                        <div className="absolute bottom-0 right-0 w-2 h-2 bg-green-500 rounded-full border-2 border-white" />
                       )}
                     </div>
                   </div>
@@ -769,18 +790,18 @@ const DashboardOverview = () => {
       {/* Floating Action Button (FAB) */}
       <div className="fixed bottom-20 md:bottom-6 right-4 md:right-6 z-50">
         {fabOpen && (
-          <div className="absolute bottom-16 right-0 space-y-2">
+          <div className="absolute bottom-16 right-0 space-y-2 animate-[fadeSlideUp_0.2s_ease-out]">
             <button
-              onClick={() => { setFabOpen(false); window.location.href = '/dashboard/sales'; }}
-              className="flex items-center gap-3 bg-white px-4 py-3 rounded-lg shadow-lg border border-neutral-200 hover:bg-neutral-50 transition-all duration-200 whitespace-nowrap"
+              onClick={() => { setFabOpen(false); navigate('/dashboard/sales'); }}
+              className="flex items-center gap-3 bg-white px-4 py-3 rounded-xl shadow-lg border border-neutral-200 hover:bg-neutral-50 transition-all duration-200 whitespace-nowrap"
             >
               <ShoppingCart size={18} style={{ color: '#10B981' }} />
               <span className="text-sm font-medium text-neutral-900">Quick Sale</span>
             </button>
             {!isCashier && (
             <button
-              onClick={() => { setFabOpen(false); window.location.href = '/dashboard/inventory'; }}
-              className="flex items-center gap-3 bg-white px-4 py-3 rounded-lg shadow-lg border border-neutral-200 hover:bg-neutral-50 transition-all duration-200 whitespace-nowrap"
+              onClick={() => { setFabOpen(false); navigate('/dashboard/inventory'); }}
+              className="flex items-center gap-3 bg-white px-4 py-3 rounded-xl shadow-lg border border-neutral-200 hover:bg-neutral-50 transition-all duration-200 whitespace-nowrap"
             >
               <Package size={18} style={{ color: '#312E81' }} />
               <span className="text-sm font-medium text-neutral-900">Add Product</span>
@@ -788,8 +809,8 @@ const DashboardOverview = () => {
             )}
             {role === ROLES.ADMIN && (
             <button
-              onClick={() => { setFabOpen(false); window.location.href = '/dashboard/workers'; }}
-              className="flex items-center gap-3 bg-white px-4 py-3 rounded-lg shadow-lg border border-neutral-200 hover:bg-neutral-50 transition-all duration-200 whitespace-nowrap"
+              onClick={() => { setFabOpen(false); navigate('/dashboard/workers'); }}
+              className="flex items-center gap-3 bg-white px-4 py-3 rounded-xl shadow-lg border border-neutral-200 hover:bg-neutral-50 transition-all duration-200 whitespace-nowrap"
             >
               <UserPlus size={18} style={{ color: '#8B5CF6' }} />
               <span className="text-sm font-medium text-neutral-900">Add Worker</span>

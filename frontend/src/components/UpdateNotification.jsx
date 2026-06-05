@@ -2,13 +2,13 @@ import { useEffect, useState, useCallback } from 'react';
 import { RefreshCw, X, Sparkles } from 'lucide-react';
 
 /**
- * Banner that appears at the top of the page when a new SW version is available.
+ * Bottom banner — appears when a new service worker version is detected.
+ * Desktop: horizontal row   Mobile: stacked, above bottom nav (bottom-16)
  */
 export default function UpdateNotification() {
   const [visible, setVisible] = useState(false);
   const [dismissed, setDismissed] = useState(false);
 
-  // Listen for the sw-update-available custom event dispatched by index.html
   useEffect(() => {
     const handler = () => {
       if (!dismissed) setVisible(true);
@@ -18,7 +18,6 @@ export default function UpdateNotification() {
   }, [dismissed]);
 
   const refresh = useCallback(() => {
-    // Tell the new SW to activate immediately, then reload
     if (navigator.serviceWorker) {
       navigator.serviceWorker.ready.then((reg) => {
         reg.waiting?.postMessage({ type: 'SKIP_WAITING' });
@@ -35,37 +34,73 @@ export default function UpdateNotification() {
   if (!visible) return null;
 
   return (
-    <div className="fixed top-4 left-1/2 -translate-x-1/2 z-[90] w-[calc(100%-2rem)] max-w-md">
-      <div className="bg-white rounded-2xl shadow-xl border border-[#312E81]/10 p-4 animate-in slide-in-from-top">
-        <div className="flex items-start gap-3">
-          {/* Icon */}
-          <div className="flex-shrink-0 w-9 h-9 rounded-xl bg-[#312E81]/10 flex items-center justify-center">
-            <Sparkles size={18} className="text-[#312E81]" />
-          </div>
+    <>
+      {/* Desktop */}
+      <div
+        className="hidden sm:flex items-center gap-3.5 fixed bottom-0 left-0 right-0 z-[45] bg-white border-t border-neutral-200 shadow-[0_-4px_20px_rgba(0,0,0,0.06)] px-6 py-3.5 animate-slide-up"
+      >
+        {/* Icon */}
+        <div className="flex-shrink-0 w-9 h-9 rounded-xl bg-[#EEF2FF] flex items-center justify-center">
+          <Sparkles size={20} className="text-[#312E81]" />
+        </div>
 
+        {/* Text */}
+        <div className="flex-1 min-w-0">
+          <p className="text-[15px] font-semibold text-neutral-900 leading-snug">
+            A new version of DukaFlow is available
+          </p>
+          <p className="text-[13px] text-neutral-500 mt-0.5">
+            Update now to get the latest features and improvements
+          </p>
+        </div>
+
+        {/* Actions */}
+        <button
+          onClick={refresh}
+          className="flex-shrink-0 h-[38px] px-5 rounded-lg bg-[#312E81] text-white text-sm font-semibold flex items-center gap-2 hover:bg-[#1E1B4B] transition-colors active:scale-[0.98]"
+        >
+          <RefreshCw size={14} />
+          Refresh
+        </button>
+        <button
+          onClick={dismiss}
+          className="flex-shrink-0 p-2 rounded-lg text-neutral-400 hover:text-neutral-700 hover:bg-neutral-100 transition-colors"
+          aria-label="Dismiss"
+        >
+          <X size={20} />
+        </button>
+      </div>
+
+      {/* Mobile */}
+      <div
+        className="sm:hidden fixed bottom-16 left-0 right-0 z-[45] bg-white border-t border-neutral-200 shadow-[0_-4px_20px_rgba(0,0,0,0.06)] p-4 animate-slide-up"
+      >
+        {/* Top row: icon + text + close */}
+        <div className="flex items-start gap-3 mb-3">
+          <div className="flex-shrink-0 w-9 h-9 rounded-xl bg-[#EEF2FF] flex items-center justify-center">
+            <Sparkles size={20} className="text-[#312E81]" />
+          </div>
           <div className="flex-1 min-w-0">
-            <p className="text-sm font-semibold text-[#1E293B]">
+            <p className="text-[15px] font-semibold text-neutral-900 leading-snug">
               New version available
             </p>
-            <p className="text-xs text-[#64748B] mt-0.5">
-              Refresh to get the latest features
+            <p className="text-[13px] text-neutral-500 mt-0.5">
+              Update for the latest features
             </p>
           </div>
-
-          {/* Close */}
           <button
             onClick={dismiss}
-            className="flex-shrink-0 rounded-full p-1 text-[#94A3B8] hover:bg-neutral-100 hover:text-[#64748B] transition-colors"
+            className="flex-shrink-0 p-1.5 rounded-lg text-neutral-400 hover:text-neutral-700 hover:bg-neutral-100 transition-colors"
             aria-label="Dismiss"
           >
-            <X size={16} />
+            <X size={20} />
           </button>
         </div>
 
-        {/* Refresh button */}
+        {/* Full-width refresh button */}
         <button
           onClick={refresh}
-          className="mt-3 w-full py-2.5 rounded-xl bg-[#312E81] text-white font-semibold text-sm flex items-center justify-center gap-2 hover:bg-[#1E1B4B] transition-colors active:scale-[0.98]"
+          className="w-full h-[42px] rounded-lg bg-[#312E81] text-white text-sm font-semibold flex items-center justify-center gap-2 hover:bg-[#1E1B4B] transition-colors active:scale-[0.98]"
         >
           <RefreshCw size={16} />
           Refresh Now
@@ -73,12 +108,12 @@ export default function UpdateNotification() {
       </div>
 
       <style>{`
-        @keyframes slide-in-from-top {
-          from { transform: translate(-50%, -100%); opacity: 0; }
-          to   { transform: translate(-50%, 0); opacity: 1; }
+        @keyframes slide-up {
+          from { transform: translateY(100%); }
+          to   { transform: translateY(0); }
         }
-        .slide-in-from-top { animation-name: slide-in-from-top; }
+        .animate-slide-up { animation: slide-up 0.3s ease-out; }
       `}</style>
-    </div>
+    </>
   );
 }

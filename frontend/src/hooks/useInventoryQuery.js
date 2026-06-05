@@ -89,6 +89,7 @@ export const useInventoryQuery = (filters = {}) => {
       };
     },
     staleTime: 30 * 1000,
+    refetchOnMount: 'always',
     refetchOnWindowFocus: true,
     retry: 1,
   });

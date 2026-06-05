@@ -42,9 +42,13 @@ const transformChartData = (chartData) => {
 
 /**
  * Compute hasData from API response — true if shop has any products or sales.
+ * Checks backend's hasProducts/totalProducts fields in addition to activity data.
  */
 const computeHasData = (data) => {
   if (!data) return false;
+  // Trust backend's explicit hasProducts flag if provided
+  if (data.hasProducts === true) return true;
+  if (data.totalProducts > 0) return true;
   return (
     data.todaySales > 0 ||
     data.recentTransactions?.length > 0 ||
@@ -121,8 +125,10 @@ export const useDashboardQuery = () => {
         date: raw.date || EMPTY_DASHBOARD.date,
       };
     },
-    staleTime: 60 * 1000,
+    staleTime: 0,
+    refetchOnMount: 'always',
     refetchOnWindowFocus: true,
+    refetchInterval: 60 * 1000,
     retry: 1,
     placeholderData: (prev) => prev,
   });

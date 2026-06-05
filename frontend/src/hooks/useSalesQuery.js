@@ -58,7 +58,8 @@ export const useSalesQuery = (filters = {}) => {
         categories: result.data.categories || [],
       };
     },
-    staleTime: 20 * 1000,
+    staleTime: 0,
+    refetchOnMount: 'always',
     refetchOnWindowFocus: true,
     retry: 1,
   });
@@ -85,7 +86,8 @@ export const useWorkersQuery = () => {
       const result = await response.json();
       return result.success ? result.data : [];
     },
-    staleTime: 5 * 60 * 1000,
+    staleTime: 60 * 1000,
+    refetchOnMount: true,
   });
 };
 

@@ -57,8 +57,6 @@ export const ClerkAuthProvider = ({ children }) => {
   return (
     <ClerkProvider
       publishableKey={publishableKey}
-      afterSignUpUrl="/auth-resolve"
-      afterSignInUrl="/auth-resolve"
       signUpFallbackRedirectUrl="/auth-resolve"
       signInFallbackRedirectUrl="/auth-resolve"
       appearance={{

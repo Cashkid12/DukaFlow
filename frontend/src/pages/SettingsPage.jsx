@@ -9,6 +9,7 @@ import {
   Building2, CreditCard, Shield, Package, Store, Pencil, Trash2, Plus, Download, FileText, 
   AlertTriangle, CheckCircle, GripVertical, Upload, X, ChevronRight, Archive, 
   Bell, Smartphone, Shirt, ShoppingBag, Utensils, Pill, Wrench, Sparkles, MoreHorizontal,
+  Lock, ArrowDown,
 } from 'lucide-react';
 
 const TABS = [
@@ -56,6 +57,7 @@ export default function SettingsPage() {
   const [attrEditValues, setAttrEditValues] = useState('');
   const [showChangePlan, setShowChangePlan] = useState(false);
   const [selectedPlan, setSelectedPlan] = useState(null);
+  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
   const [showBranchModal, setShowBranchModal] = useState(false);
   const [branchForm, setBranchForm] = useState({ name: '', location: '', assignedWorkers: [] });
   const [editingBranch, setEditingBranch] = useState(null);
@@ -591,14 +593,29 @@ export default function SettingsPage() {
 
                 {currentPlan !== 'biashara' ? (
                   <div className="text-center py-10">
-                    <Building2 size={48} className="text-[#CBD5E1] mx-auto mb-4" />
-                    <h4 className="text-lg font-semibold text-[#1E293B] mb-2">Available on Biashara Plan</h4>
-                    <p className="text-sm text-[#64748B] mb-4 max-w-md mx-auto">
+                    <div className="w-14 h-14 rounded-full bg-neutral-100 flex items-center justify-center mx-auto mb-5">
+                      <Lock size={28} className="text-neutral-300" />
+                    </div>
+                    <h4 className="text-xl font-bold text-neutral-900 mb-2">Available on Biashara Plan</h4>
+                    <p className="text-[15px] text-neutral-500 mb-6 max-w-[400px] mx-auto text-center">
                       Upgrade to Biashara to manage multiple shop branches from one account.
                     </p>
-                    <Button variant="primary" onClick={() => { setActiveTab('billing'); setShowChangePlan(true); setSelectedPlan('biashara'); }}>
-                      Upgrade to Biashara <ChevronRight size={16} />
+                    <Button
+                      variant="primary"
+                      size="lg"
+                      className="mx-auto"
+                      onClick={() => setShowUpgradeModal(true)}
+                    >
+                      🚀 Upgrade to Biashara
                     </Button>
+                    <p className="mt-4 text-sm">
+                      <span
+                        className="text-[#312E81] font-medium cursor-pointer hover:underline"
+                        onClick={() => setActiveTab('billing')}
+                      >
+                        Learn more about plans →
+                      </span>
+                    </p>
                   </div>
                 ) : (
                   <>
@@ -821,6 +838,135 @@ export default function SettingsPage() {
           </Button>
         </div>
       </Modal>
+
+      {/* ── UPGRADE TO BIASHARA MODAL ── */}
+      {showUpgradeModal && (
+        <>
+          {/* Overlay */}
+          <div
+            className="fixed inset-0 z-50 bg-black/50 animate-[fadeIn_0.2s_ease]"
+            onClick={() => setShowUpgradeModal(false)}
+          />
+
+          {/* Modal card — desktop: centered / mobile: bottom sheet */}
+          <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center">
+            <div
+              className="bg-white rounded-t-[24px] sm:rounded-[24px] shadow-2xl w-full sm:max-w-[500px] sm:w-[90%] max-h-[90vh] overflow-y-auto p-6 sm:p-9 animate-[scaleUp_0.3s_ease-out]"
+            >
+              {/* Close */}
+              <button
+                onClick={() => setShowUpgradeModal(false)}
+                className="absolute top-4 right-4 w-10 h-10 flex items-center justify-center rounded-full hover:bg-neutral-100 text-neutral-500 transition-colors"
+              >
+                <X size={20} />
+              </button>
+
+              {/* Title */}
+              <h2 className="text-xl sm:text-[22px] font-bold text-neutral-900 mb-6 pr-10">
+                Upgrade to Biashara Plan
+              </h2>
+
+              {/* Current Plan */}
+              <div className="bg-neutral-50 rounded-[12px] p-[14px_18px] mb-4">
+                <p className="text-sm text-neutral-500">
+                  Current Plan: {PLAN_LABELS[currentPlan]}
+                </p>
+                <p className="text-lg font-semibold text-neutral-900 mt-0.5">
+                  KSh {PLAN_PRICES[currentPlan].toLocaleString()} / month
+                </p>
+              </div>
+
+              {/* Arrow */}
+              <div className="flex justify-center my-2">
+                <ArrowDown size={24} className="text-neutral-400" />
+              </div>
+
+              {/* Biashara Card */}
+              <div className="relative border-2 border-[#312E81] rounded-[16px] p-6 bg-white">
+                <Badge
+                  variant="premium"
+                  className="absolute -top-3 left-1/2 -translate-x-1/2 text-[11px] px-2.5 py-1"
+                >
+                  MOST POPULAR
+                </Badge>
+                <p className="text-xl font-bold text-neutral-900 mt-3">Biashara Plan</p>
+                <p className="text-[28px] font-bold text-[#312E81] mt-1">
+                  KSh 3,000<span className="text-sm font-normal text-neutral-500"> / month</span>
+                </p>
+                <ul className="mt-4 space-y-2.5">
+                  {[
+                    '5+ Users',
+                    'Multiple Branches',
+                    'Unlimited Products',
+                    'Priority Support',
+                    'API Access',
+                    'Custom Onboarding',
+                    'Everything in Kuuza',
+                  ].map((f, i) => (
+                    <li key={i} className="flex items-center gap-2.5 text-sm text-neutral-700">
+                      <CheckCircle size={16} className="text-[#10B981] shrink-0" />
+                      {f}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+
+              {/* Benefits Box */}
+              <div className="bg-[#EEF2FF] rounded-[12px] p-4 mt-4">
+                <p className="text-sm font-semibold text-[#312E81] mb-2">
+                  💡 What you get with Biashara:
+                </p>
+                <ul className="space-y-1.5">
+                  {[
+                    'Manage multiple shop locations',
+                    'Consolidated reports across branches',
+                    'Transfer stock between branches',
+                    'Branch-specific worker assignments',
+                  ].map((item, i) => (
+                    <li key={i} className="text-[13px] text-neutral-600 flex items-start gap-1.5">
+                      <span className="text-[#312E81] mt-0.5 shrink-0">•</span>
+                      {item}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+
+              {/* Confirm Button */}
+              <button
+                disabled={planMutation.isPending}
+                onClick={() => {
+                  setShowUpgradeModal(false);
+                  planMutation.mutate('biashara');
+                }}
+                className="w-full h-12 rounded-[12px] bg-[#312E81] text-white text-sm font-semibold flex items-center justify-center mt-5 hover:bg-[#1E1B4B] transition-colors active:scale-[0.98] disabled:opacity-60"
+              >
+                {planMutation.isPending ? 'Upgrading...' : 'Confirm Upgrade to Biashara'}
+              </button>
+
+              {/* Cancel Button */}
+              <button
+                onClick={() => setShowUpgradeModal(false)}
+                className="w-full h-10 rounded-[12px] text-sm font-medium text-neutral-500 hover:text-neutral-700 hover:bg-neutral-50 transition-colors mt-2"
+              >
+                Cancel
+              </button>
+
+              {/* Info */}
+              <p className="text-xs text-neutral-400 text-center mt-4">
+                Your plan will change immediately. You'll be charged KSh 3,000 on your next billing date.
+              </p>
+            </div>
+          </div>
+
+          <style>{`
+            @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+            @keyframes scaleUp {
+              from { transform: scale(0.95) translateY(20px); opacity: 0; }
+              to   { transform: scale(1) translateY(0); opacity: 1; }
+            }
+          `}</style>
+        </>
+      )}
 
       {/* ── ADD/EDIT BRANCH MODAL ── */}
       <Modal isOpen={showBranchModal} onClose={() => { setShowBranchModal(false); setEditingBranch(null); }}

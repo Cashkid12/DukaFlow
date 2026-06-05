@@ -10,6 +10,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@clerk/clerk-react';
 import { useSalesQuery, useWorkersQuery } from '../hooks/useSalesQuery';
 import { useDebounce } from '../hooks/useDebounce';
+import useCurrentUser from '../hooks/useCurrentUser';
 import { formatCurrency, formatDateTime } from '../utils/formatters';
 import ReceiptView, { printReceipt, generateWhatsAppMessage } from '../components/sales/ReceiptView';
 import TransactionHistory from '../components/sales/TransactionHistory';
@@ -65,23 +66,25 @@ const PosEmpty = () => {
   return (
     <div className="flex flex-col lg:flex-row gap-6">
       {/* Main empty state */}
-      <div className="lg:w-[60%] flex flex-col items-center justify-center min-h-[50vh] sm:min-h-[60vh] py-8 sm:py-10 lg:py-16 px-4 sm:px-5 lg:px-6 text-center">
-        <ShoppingCart size={64} className="text-neutral-300 mb-4 sm:mb-5 lg:mb-6 hidden sm:block" />
-        <ShoppingCart size={48} className="text-neutral-300 mb-5 sm:hidden" />
+      <div className="lg:w-[60%] flex flex-col items-center justify-center min-h-[50vh] sm:min-h-[60vh] py-6 sm:py-10 lg:py-16 px-4 sm:px-5 lg:px-6 text-center">
+        <ShoppingCart size={48} className="text-neutral-200 mb-4 sm:hidden" />
+        <ShoppingCart size={64} className="text-neutral-200 mb-5 hidden sm:block" />
         <h2 className="text-lg sm:text-xl lg:text-[22px] font-bold text-neutral-900 mb-2 sm:mb-3">No products to sell yet</h2>
-        <p className="text-sm sm:text-sm lg:text-[15px] text-neutral-500 max-w-[300px] sm:max-w-[360px] lg:max-w-[400px] mb-6 sm:mb-7 lg:mb-8 leading-relaxed sm:leading-relaxed lg:leading-[1.6]">
+        <p className="text-sm sm:text-sm lg:text-[15px] text-neutral-500 max-w-[300px] sm:max-w-[360px] lg:max-w-[400px] mb-6 sm:mb-7 lg:mb-8 leading-relaxed">
           Add products to your inventory first, then come back here to record sales.
         </p>
-        <div className="flex flex-col items-center gap-3 sm:gap-3 lg:gap-4 w-full max-w-[320px] sm:max-w-[320px] lg:max-w-xs">
+        <div className="flex flex-col items-center w-full">
           <button
             onClick={() => navigate('/dashboard/inventory')}
-            className="w-full sm:w-auto lg:w-auto h-12 px-6 sm:px-7 lg:px-7 bg-[#312E81] text-white rounded-xl font-semibold text-[15px] sm:text-sm lg:text-base flex items-center justify-center gap-2 sm:gap-3 shadow-sm hover:bg-[#1E1B4B] hover:shadow-md hover:scale-[1.02] active:scale-[0.98] focus:ring-4 focus:ring-[#EEF2FF] focus:outline-none transition-all duration-200 cursor-pointer"
+            className="w-full max-w-[320px] sm:w-auto sm:max-w-none h-12 sm:h-[52px] px-6 sm:px-8 bg-[#312E81] text-white rounded-[14px] font-semibold text-[15px] sm:text-base flex items-center justify-center gap-2.5 shadow-md hover:bg-[#1E1B4B] hover:shadow-lg hover:scale-[1.02] active:scale-[0.98] transition-all duration-200 cursor-pointer mb-4"
           >
-            <Package size={18} /> Go to Inventory →
+            <Package size={20} className="sm:hidden" />
+            <Package size={18} className="hidden sm:block" />
+            Go to Inventory →
           </button>
           <button
             onClick={() => navigate('/dashboard/inventory/add')}
-            className="text-sm text-[#312E81] hover:underline font-medium transition-all duration-150"
+            className="text-[14px] text-[#312E81] hover:underline font-medium transition-all duration-150 mt-1"
           >
             Add your first product →
           </button>
@@ -102,6 +105,8 @@ const PosEmpty = () => {
 const SalesPage = () => {
   const { userId, getToken } = useAuth();
   const queryClient = useQueryClient();
+  const { data: currentUser } = useCurrentUser();
+  const shopId = currentUser?.shop?._id;
 
   const [activeTab, setActiveTab] = useState('new');
   const [searchTerm, setSearchTerm] = useState('');
@@ -184,11 +189,27 @@ const SalesPage = () => {
   useEffect(() => {
     const SOCKET_URL = import.meta.env.VITE_SOCKET_URL || 'http://localhost:5000';
     const socket = io(SOCKET_URL, { transports: ['websocket', 'polling'], reconnection: true });
-    socket.on('product:updated', () => queryClient.invalidateQueries({ queryKey: ['sales', 'products'] }));
-    socket.on('stock:updated', () => queryClient.invalidateQueries({ queryKey: ['sales', 'products'] }));
-    socket.on('product:deleted', () => queryClient.invalidateQueries({ queryKey: ['sales', 'products'] }));
+    socket.on('connect', () => {
+      if (shopId) socket.emit('join:shop', shopId);
+    });
+    socket.on('product:created', () => {
+      queryClient.invalidateQueries({ queryKey: ['sales', 'products'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
+    });
+    socket.on('product:updated', () => {
+      queryClient.invalidateQueries({ queryKey: ['sales', 'products'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
+    });
+    socket.on('stock:updated', () => {
+      queryClient.invalidateQueries({ queryKey: ['sales', 'products'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
+    });
+    socket.on('product:deleted', () => {
+      queryClient.invalidateQueries({ queryKey: ['sales', 'products'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
+    });
     return () => { if (socket.connected) socket.disconnect(); };
-  }, [queryClient]);
+  }, [queryClient, shopId]);
 
   const addToCart = useCallback((product) => {
     setCart((prev) => {
@@ -287,6 +308,7 @@ const SalesPage = () => {
       // Invalidate caches
       queryClient.invalidateQueries({ queryKey: ['sales', 'products'] });
       queryClient.invalidateQueries({ queryKey: ['inventory'] });
+      queryClient.invalidateQueries({ queryKey: ['products'] });
       queryClient.invalidateQueries({ queryKey: ['dashboard'] });
     } catch (err) {
       setShowProcessing(false);

@@ -295,9 +295,10 @@ const AddProductPage = () => {
       const saved = await res.json();
       const productId = saved?.data?._id;
 
-      // Invalidate inventory cache
+      // Invalidate inventory and dashboard cache for real-time updates
       queryClient.invalidateQueries({ queryKey: ['inventory'] });
       queryClient.invalidateQueries({ queryKey: ['products'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
 
       if (addAnother) {
         setForm(INITIAL_FORM);
@@ -403,6 +404,7 @@ const AddProductPage = () => {
 
       queryClient.invalidateQueries({ queryKey: ['inventory'] });
       queryClient.invalidateQueries({ queryKey: ['products'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
 
       const imported = result.data?.imported || products.length;
       const skipped = result.data?.skipped || 0;

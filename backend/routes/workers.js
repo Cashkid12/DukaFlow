@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { clerkAuth } = require('../middleware/clerkAuth');
+const { clerkAuth, optionalClerkAuth } = require('../middleware/clerkAuth');
 const {
   getWorkers,
   getWorker,
@@ -11,9 +11,20 @@ const {
   getWorkerPerformance,
   getWorkerTransactions,
   getWorkerActivity,
+  verifyInvitation,
+  acceptInvitation,
+  cancelInvite,
 } = require('../controllers/workerController');
 
-// All routes are protected with Clerk auth
+// ─── Public routes (no auth) ────────────────────────────────────────────
+router.get('/verify-invitation', verifyInvitation);
+
+// ─── Protected routes (auth required) ───────────────────────────────────
+
+// Accept invitation — auth required (new Clerk user)
+router.post('/accept-invitation', clerkAuth, acceptInvitation);
+
+// All other routes are protected with Clerk auth
 router.use(clerkAuth);
 
 // Invite must come before /:id
@@ -26,6 +37,7 @@ router.route('/')
 router.get('/:id/performance', getWorkerPerformance);
 router.get('/:id/transactions', getWorkerTransactions);
 router.get('/:id/activity', getWorkerActivity);
+router.delete('/:id/cancel-invite', cancelInvite);
 
 router.get('/:id', getWorker);
 router.put('/:id', updateWorker);
