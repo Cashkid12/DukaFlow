@@ -17,6 +17,7 @@ const SignUpPage = () => {
   });
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [oauthLoading, setOauthLoading] = useState(false);
   const [error, setError] = useState('');
 
   // Redirect if already signed in
@@ -199,14 +200,16 @@ const SignUpPage = () => {
   const handleGoogleSignUp = async () => {
     try {
       if (!isLoaded) return;
+      setOauthLoading(true);
       
       await signUp.authenticateWithRedirect({
         strategy: 'oauth_google',
-        redirectUrl: '/sign-up',
-        redirectUrlComplete: '/sign-up',
+        redirectUrl: '/auth-resolve',
+        redirectUrlComplete: '/auth-resolve',
       });
     } catch (err) {
       console.error('Google sign-up error:', err);
+      setOauthLoading(false);
       setError('Failed to sign up with Google.');
     }
   };
@@ -214,14 +217,16 @@ const SignUpPage = () => {
   const handleAppleSignUp = async () => {
     try {
       if (!isLoaded) return;
+      setOauthLoading(true);
       
       await signUp.authenticateWithRedirect({
         strategy: 'oauth_apple',
-        redirectUrl: '/sign-up',
-        redirectUrlComplete: '/sign-up',
+        redirectUrl: '/auth-resolve',
+        redirectUrlComplete: '/auth-resolve',
       });
     } catch (err) {
       console.error('Apple sign-up error:', err);
+      setOauthLoading(false);
       setError('Failed to sign up with Apple.');
     }
   };
@@ -235,6 +240,23 @@ const SignUpPage = () => {
         background: 'linear-gradient(135deg, #EEF2FF 0%, #FFFFFF 50%, #FDF2EC 100%)',
       }}
     >
+      {/* OAuth Loading Overlay — appears immediately on Google/Apple click */}
+      {oauthLoading && (
+        <div className="fixed inset-0 z-[60] bg-[#F8FAFC] flex items-center justify-center p-6 animate-[fadeIn_0.3s_ease]">
+          <div className="text-center max-w-[400px]">
+            <div className="mx-auto mb-6 w-14 h-14 rounded-xl bg-[#312E81] flex items-center justify-center relative overflow-hidden shadow-lg">
+              <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
+                <polyline points="9 22 9 12 15 12 15 22" />
+              </svg>
+              <div className="absolute bottom-0 left-1 right-1 h-[3px] bg-[#E8835C] rounded-b-sm" />
+            </div>
+            <h1 className="text-xl font-semibold text-neutral-900 mb-4">Setting up your duka...</h1>
+            <Loader2 size={32} className="animate-spin text-[#312E81] mx-auto mb-3" />
+            <p className="text-sm text-neutral-500">This may take a few moments</p>
+          </div>
+        </div>
+      )}
       {/* Subtle Pattern Overlay */}
       <div 
         className="absolute inset-0 opacity-5"

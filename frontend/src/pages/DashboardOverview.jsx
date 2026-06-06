@@ -19,6 +19,7 @@ const DashboardOverview = () => {
   const navigate = useNavigate();
   const [fabOpen, setFabOpen] = useState(false);
   const [bannerDismissed, setBannerDismissed] = useState(false);
+  const [skippedEmpty, setSkippedEmpty] = useState(false);
   const { data, isLoading, isError, invalidate, refetch } = useDashboardQuery();
   const { user } = useUser();
   const { data: currentUser } = useCurrentUser();
@@ -137,28 +138,24 @@ const DashboardOverview = () => {
     );
   };
 
-  // ── Empty state — no data yet ────────────────────────────────
-  if (!hasData) {
+  // ── Empty state — no products yet (clean, no stat cards) ─────
+  if (!hasData && !skippedEmpty) {
     const welcomeName = firstName || 'there';
 
     return (
-      <div className="space-y-6 animate-fade-in">
-        {/* Centered Welcome with Action Cards */}
-        <div className="flex items-center justify-center">
-          <div className="w-full max-w-[520px] text-center px-4 sm:px-0 py-8 sm:py-12">
-            <Package size={48} className="mx-auto text-neutral-200 sm:hidden" />
-            <Package size={64} className="mx-auto text-neutral-200 hidden sm:block" />
-            <h3 className="text-[20px] sm:text-2xl font-bold text-neutral-900 mt-5">
-              Welcome to Your Dashboard, {welcomeName}!
-            </h3>
-            <p className="text-[14px] sm:text-base text-neutral-500 mt-2 max-w-[400px] mx-auto text-center">
-              Your shop is set up and ready to go. What would you like to do first?
-            </p>
-          </div>
-        </div>
+      <div className="min-h-[70vh] flex flex-col items-center justify-center animate-fade-in px-4 py-8 sm:py-12">
+        {/* Welcome Section */}
+        <Package size={48} className="text-neutral-200 sm:hidden" />
+        <Package size={64} className="text-neutral-200 hidden sm:block" />
+        <h3 className="text-[20px] sm:text-2xl font-bold text-neutral-900 mt-5 text-center">
+          Welcome to Your Dashboard!
+        </h3>
+        <p className="text-[14px] sm:text-[15px] text-neutral-500 mt-2 max-w-[400px] text-center">
+          Your shop is set up and ready to go. What would you like to do first?
+        </p>
 
         {/* Action Cards — Add Product + Invite Workers */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-[720px] mx-auto">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-[720px] w-full mt-8">
           {/* Add Product Card */}
           <div
             className="bg-white rounded-2xl border border-neutral-200 p-7 cursor-pointer hover:border-[#312E81] hover:shadow-md transition-all duration-200 hover:-translate-y-0.5 group"
@@ -193,7 +190,7 @@ const DashboardOverview = () => {
               Invite Your Workers
             </h4>
             <p className="text-sm text-neutral-500 mb-5 max-w-[250px]">
-              Add your staff to help manage the duka and track performance.
+              Add your staff to help manage the duka.
             </p>
             <button className="flex items-center justify-center gap-2 w-full px-5 py-3 bg-white border-[1.5px] border-neutral-300 text-neutral-700 font-semibold rounded-xl hover:bg-neutral-50 hover:border-[#312E81] transition-all text-sm">
               <UserPlus size={18} />
@@ -205,104 +202,13 @@ const DashboardOverview = () => {
         </div>
 
         {/* Skip Link */}
-        <div className="text-center">
+        <div className="text-center mt-6">
           <button
-            onClick={() => {
-              const el = document.getElementById('empty-stat-cards');
-              if (el) el.scrollIntoView({ behavior: 'smooth' });
-            }}
+            onClick={() => setSkippedEmpty(true)}
             className="text-sm text-[#312E81] font-medium hover:underline"
           >
             Skip for now &mdash; go to empty dashboard &rarr;
           </button>
-        </div>
-
-        {/* Stat Cards — all zeros */}
-        <div id="empty-stat-cards" className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-4">
-          {/* Today's Sales */}
-          <div className="bg-white rounded-2xl border border-neutral-100 p-4 sm:p-5">
-            <div className="flex items-start justify-between mb-3">
-              <div>
-                <p className="text-xs font-medium text-neutral-500 uppercase tracking-wide">Today&apos;s Sales</p>
-                <p className="text-2xl font-bold text-neutral-400 mt-1">KSh 0</p>
-              </div>
-              <div className="w-10 h-10 rounded-lg bg-[#EEF2FF] flex items-center justify-center">
-                <TrendingUp size={20} style={{ color: '#312E81' }} />
-              </div>
-            </div>
-            <div className="flex items-center gap-2">
-              {renderTrend(null)}
-              <span className="text-xs text-neutral-500">vs yesterday</span>
-            </div>
-          </div>
-
-          {/* Today's Profit — hidden for cashiers */}
-          {showProfit && (
-          <div
-            className="bg-white rounded-2xl border border-neutral-100 p-4 sm:p-5"
-            style={{
-              borderLeft: '4px solid #E8835C',
-              background: 'linear-gradient(135deg, #FFF7ED 0%, #FFFFFF 100%)',
-            }}
-          >
-            <div className="flex items-start justify-between mb-3">
-              <div>
-                <p className="text-xs font-medium text-neutral-500 uppercase tracking-wide">Today&apos;s Profit</p>
-                <p className="text-2xl font-bold mt-1 text-neutral-400">{isManager ? '—' : 'KSh 0'}</p>
-              </div>
-              <div className="w-10 h-10 rounded-lg flex items-center justify-center" style={{ backgroundColor: '#FFF7ED' }}>
-                <DollarSign size={20} style={{ color: '#E8835C' }} />
-              </div>
-            </div>
-            <div className="flex items-center gap-2">
-              {renderTrend(null)}
-              <span className="text-xs text-neutral-500">vs yesterday</span>
-            </div>
-          </div>
-          )}
-
-          {/* Low Stock */}
-          <div className="bg-white rounded-2xl border border-neutral-100 p-4 sm:p-5">
-            <div className="flex items-start justify-between mb-3">
-              <div>
-                <p className="text-xs font-medium text-neutral-500 uppercase tracking-wide">Low Stock</p>
-                <p className="text-2xl font-bold text-neutral-900 mt-1">0 items</p>
-              </div>
-              <div className="w-10 h-10 rounded-lg bg-green-50 flex items-center justify-center">
-                <AlertTriangle size={20} style={{ color: '#10B981' }} />
-              </div>
-            </div>
-            <p className="text-xs font-medium text-green-600">All good &#10003;</p>
-          </div>
-
-          {/* Active Workers */}
-          <div className="bg-white rounded-2xl border border-neutral-100 p-4 sm:p-5">
-            <div className="flex items-start justify-between mb-3">
-              <div>
-                <p className="text-xs font-medium text-neutral-500 uppercase tracking-wide">Active Workers</p>
-                <p className="text-2xl font-bold text-neutral-900 mt-1">1 online</p>
-              </div>
-              <div className="w-10 h-10 rounded-lg bg-purple-50 flex items-center justify-center">
-                <Users size={20} style={{ color: '#8B5CF6' }} />
-              </div>
-            </div>
-            <div className="flex items-center gap-2">
-              <div className="w-2 h-2 rounded-full bg-green-500" />
-              <span className="text-xs text-neutral-500">You</span>
-            </div>
-          </div>
-        </div>
-
-        {/* Empty Chart */}
-        <div className="bg-white rounded-2xl border border-neutral-200 p-6">
-          <div className="mb-6">
-            <h2 className="text-lg font-semibold text-neutral-900">Last 7 Days Performance</h2>
-          </div>
-          <div className="h-[200px] md:h-[300px] flex flex-col items-center justify-center">
-            <BarChart3 size={48} className="text-neutral-200 mb-4" />
-            <p className="text-[14px] text-neutral-400 font-medium">No sales data yet</p>
-            <p className="text-[13px] text-neutral-400 mt-1">Sales will appear here once you start recording</p>
-          </div>
         </div>
       </div>
     );

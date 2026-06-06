@@ -613,42 +613,56 @@ exports.importCsv = async (req, res) => {
 // @access  Private
 exports.downloadTemplate = async (req, res) => {
   try {
-    const { type } = req.query;
+    const businessType = req.query.businessType || req.query.type;
 
     // Business-type-specific templates
-    const templates = {
+    const BUSINESS_TYPE_COLUMNS = {
       clothing: {
-        headers: ['name', 'category', 'buyingPrice', 'sellingPrice', 'quantity', 'size', 'color', 'material', 'brand'],
-        sample: ['Sample T-Shirt', 'Shirts', '350', '800', '20', 'M', 'Blue', 'Cotton', 'Nike'],
+        columns: ['name', 'category', 'buyingPrice', 'sellingPrice', 'quantity', 'size', 'color', 'material', 'brand'],
+        example: ['Slim Fit Jeans', 'Trousers', '1200', '1800', '12', '32', 'Blue', 'Denim', "Levi's"],
       },
       electronics: {
-        headers: ['name', 'category', 'buyingPrice', 'sellingPrice', 'quantity', 'brand', 'model', 'condition', 'warranty'],
-        sample: ['Sample Phone', 'Phones', '15000', '22000', '5', 'Samsung', 'Galaxy S24', 'New', '12'],
+        columns: ['name', 'category', 'buyingPrice', 'sellingPrice', 'quantity', 'brand', 'model', 'condition', 'warranty'],
+        example: ['Samsung Galaxy S24', 'Phones', '45000', '55000', '5', 'Samsung', 'Galaxy S24', 'New', '12'],
       },
       grocery: {
-        headers: ['name', 'category', 'buyingPrice', 'sellingPrice', 'quantity', 'weight', 'brand', 'expiryDate', 'organic'],
-        sample: ['Sample Milk', 'Dairy', '45', '60', '50', '1 Litre', 'Brookside', '2026-12-31', 'No'],
+        columns: ['name', 'category', 'buyingPrice', 'sellingPrice', 'quantity', 'weight', 'brand', 'expiryDate', 'organic'],
+        example: ['Cooking Oil 1L', 'Cooking Essentials', '180', '230', '24', '1 Litre', 'Bidco', '2026-12-15', 'No'],
       },
       cosmetics: {
-        headers: ['name', 'category', 'buyingPrice', 'sellingPrice', 'quantity', 'shade', 'skinType', 'expiryDate', 'brand'],
-        sample: ['Sample Lipstick', 'Makeup', '350', '650', '24', 'Ruby Red', 'All Skin', '2026-12-31', 'MAC'],
+        columns: ['name', 'category', 'buyingPrice', 'sellingPrice', 'quantity', 'shade', 'skinType', 'expiryDate', 'brand'],
+        example: ['Ruby Red Lipstick', 'Makeup', '350', '500', '15', 'Ruby Red', 'All Skin', '2026-12-15', 'MAC'],
       },
       hardware: {
-        headers: ['name', 'category', 'buyingPrice', 'sellingPrice', 'quantity', 'material', 'size', 'unit', 'brand'],
-        sample: ['Sample Hammer', 'Tools', '250', '450', '30', 'Steel', '500g', 'Piece', 'Stanley'],
+        columns: ['name', 'category', 'buyingPrice', 'sellingPrice', 'quantity', 'material', 'size', 'unit', 'brand'],
+        example: ['Claw Hammer 500g', 'Tools', '350', '550', '15', 'Steel/Wood', '500g', 'Piece', 'Stanley'],
       },
       pharmacy: {
-        headers: ['name', 'category', 'buyingPrice', 'sellingPrice', 'quantity', 'strength', 'form', 'expiryDate', 'brand', 'prescriptionRequired', 'batchNumber'],
-        sample: ['Sample Painkiller', 'OTC', '80', '150', '100', '500mg', 'Tablet', '2027-06-15', 'Panadol', 'No', 'B2026-05-23'],
+        columns: ['name', 'category', 'buyingPrice', 'sellingPrice', 'quantity', 'strength', 'form', 'expiryDate', 'brand', 'prescriptionRequired', 'batchNumber'],
+        example: ['Paracetamol', 'OTC', '180', '250', '45', '500mg', 'Tablet', '2026-12-15', 'Panadol', 'No', 'B2026-001'],
       },
     };
 
-    const tpl = templates[type] || templates.clothing;
-    const csvContent = [tpl.headers.join(','), tpl.sample.join(',')].join('\n');
-    const filename = type ? `dukaflow_${type}_template.csv` : 'dukaflow_product_template.csv';
+    const tpl = BUSINESS_TYPE_COLUMNS[businessType] || BUSINESS_TYPE_COLUMNS.clothing;
+    const btKey = businessType || 'clothing';
 
-    res.setHeader('Content-Type', 'text/csv');
-    res.setHeader('Content-Disposition', `attachment; filename=${filename}`);
+    // Helper: wrap values containing commas or special chars in double quotes
+    const escapeCsvField = (val) => {
+      const s = String(val);
+      if (s.includes(',') || s.includes('"') || s.includes('\n') || s.includes('\r')) {
+        return '"' + s.replace(/"/g, '""') + '"';
+      }
+      return s;
+    };
+
+    const headerRow = tpl.columns.map(escapeCsvField).join(',');
+    const exampleRow = tpl.example.map(escapeCsvField).join(',');
+    // UTF-8 BOM for Excel compatibility + CRLF line endings
+    const csvContent = '\uFEFF' + headerRow + '\r\n' + exampleRow + '\r\n';
+    const filename = `dukaflow-${btKey}-template.csv`;
+
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
     res.status(200).send(csvContent);
   } catch (error) {
     console.error('Template download error:', error);

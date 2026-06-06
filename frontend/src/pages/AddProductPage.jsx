@@ -426,18 +426,21 @@ const AddProductPage = () => {
   const handleTemplateDownload = async (btId) => {
     try {
       const token = await getToken();
-      const res = await fetch(`${API_BASE_URL}/products/template?type=${btId}`, {
+      const res = await fetch(`${API_BASE_URL}/products/template?businessType=${btId}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
+      if (!res.ok) throw new Error('Failed to download template');
       const blob = await res.blob();
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `dukaflow_${btId}_template.csv`;
+      a.download = `dukaflow-${btId}-template.csv`;
       a.click();
       URL.revokeObjectURL(url);
+      setToast({ message: '✓ Template downloaded', type: 'template' });
     } catch (err) {
       console.error('Template download error:', err);
+      setToast({ message: 'Failed to download template', type: 'error' });
     }
   };
 
@@ -970,8 +973,8 @@ const AddProductPage = () => {
 
           {/* Template Download */}
           <div className="bg-white rounded-[20px] border border-neutral-100 shadow-sm p-8">
-            <h3 className="text-lg font-semibold text-neutral-900 mb-5">Download Template</h3>
-            <p className="text-sm text-neutral-500 mb-4">Download a pre-formatted CSV template matching your business type{businessTypeIds.length !== 1 ? 's' : ''}</p>
+            <h3 className="text-lg font-semibold text-neutral-900 mb-2">Download Template</h3>
+            <p className="text-sm text-neutral-500 mb-5">Download a pre-formatted CSV template matching your business type{businessTypeIds.length !== 1 ? 's' : ''}</p>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
               {businessTypeIds.map((btId) => {
                 const cfg = BUSINESS_TYPE_CONFIG[btId];
@@ -979,14 +982,12 @@ const AddProductPage = () => {
                   <button
                     key={btId}
                     onClick={() => handleTemplateDownload(btId)}
-                    className="flex items-center gap-3 px-4 py-3.5 border border-neutral-200 rounded-xl text-left hover:bg-[#EEF2FF]/40 hover:border-[#312E81]/30 transition-all group"
+                    className="flex items-center gap-3.5 px-5 py-[18px] bg-white border-[1.5px] border-neutral-300 rounded-[14px] text-left hover:border-[#312E81] hover:bg-[#EEF2FF] hover:shadow-sm transition-all duration-150 group"
                   >
-                    <div className="w-9 h-9 rounded-lg bg-[#EEF2FF] flex items-center justify-center group-hover:bg-[#312E81] transition-colors flex-shrink-0">
-                      <Download size={16} className="text-[#312E81] group-hover:text-white transition-colors" />
-                    </div>
+                    <Download size={24} className="text-[#312E81] flex-shrink-0" />
                     <div className="min-w-0">
-                      <p className="text-sm font-medium text-neutral-800 truncate">{cfg?.name || btId}</p>
-                      <p className="text-[11px] text-neutral-400">CSV template</p>
+                      <p className="text-base font-semibold text-neutral-900 truncate">{cfg?.name || btId}</p>
+                      <p className="text-[13px] text-neutral-500">CSV template</p>
                     </div>
                   </button>
                 );

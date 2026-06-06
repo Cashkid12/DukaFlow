@@ -53,6 +53,14 @@ function PwaInit({ children }) {
     };
   }, []);
 
+  // Ping backend on app mount to wake it up (Render free tier sleeps after 15min)
+  useEffect(() => {
+    const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+    fetch(`${API_URL}/health`)
+      .then(() => console.log('[DukaFlow] Backend is awake'))
+      .catch(() => console.log('[DukaFlow] Backend might be sleeping — will retry on sign-in'));
+  }, []);
+
   return (
     <>
       <UpdateNotification />
