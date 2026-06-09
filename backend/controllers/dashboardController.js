@@ -11,6 +11,7 @@ exports.getDashboardData = async (req, res) => {
   try {
     const shopId = req.user.shop;
     const { date = new Date().toISOString().split('T')[0] } = req.query;
+    const isCashier = req.user.role === 'cashier';
 
     if (!shopId) {
       return res.status(400).json({
@@ -22,6 +23,9 @@ exports.getDashboardData = async (req, res) => {
     const today = new Date(date);
     const todayStart = new Date(today.setHours(0, 0, 0, 0));
     const todayEnd = new Date(today.setHours(23, 59, 59, 999));
+
+    // Cashier filter: only show their own transactions
+    const soldByFilter = isCashier ? { soldBy: req.user._id } : {};
     
     // Yesterday for trend calculation
     const yesterday = new Date(today);
@@ -55,6 +59,7 @@ exports.getDashboardData = async (req, res) => {
           $match: {
             shop: shopId,
             createdAt: { $gte: todayStart, $lte: todayEnd },
+            ...soldByFilter,
           },
         },
         {
@@ -71,6 +76,7 @@ exports.getDashboardData = async (req, res) => {
           $match: {
             shop: shopId,
             createdAt: { $gte: yesterdayStart, $lte: yesterdayEnd },
+            ...soldByFilter,
           },
         },
         {
@@ -81,12 +87,13 @@ exports.getDashboardData = async (req, res) => {
         },
       ]),
 
-      // Today's profit (from transactions)
+      // Today's profit (from transactions) — hidden for cashiers
       Transaction.aggregate([
         {
           $match: {
             shop: shopId,
             createdAt: { $gte: todayStart, $lte: todayEnd },
+            ...soldByFilter,
           },
         },
         {
@@ -133,8 +140,8 @@ exports.getDashboardData = async (req, res) => {
         'activeSessions.lastActive': { $gte: new Date(Date.now() - 5 * 60 * 1000) },
       }),
 
-      // Recent transactions (last 5)
-      Transaction.find({ shop: shopId })
+      // Recent transactions (last 5) — filtered by cashier if applicable
+      Transaction.find({ shop: shopId, ...soldByFilter })
         .sort({ createdAt: -1 })
         .limit(5)
         .populate('soldBy', 'fullName avatar')
@@ -147,12 +154,13 @@ exports.getDashboardData = async (req, res) => {
         .limit(10)
         .lean(),
 
-      // Worker performance today
+      // Worker performance today — filtered by cashier if applicable
       Transaction.aggregate([
         {
           $match: {
             shop: shopId,
             createdAt: { $gte: todayStart, $lte: todayEnd },
+            ...soldByFilter,
           },
         },
         {
@@ -165,12 +173,13 @@ exports.getDashboardData = async (req, res) => {
         { $sort: { salesValue: -1 } },
       ]),
 
-      // Chart data (last 7 days)
+      // Chart data (last 7 days) — filtered by cashier if applicable
       Transaction.aggregate([
         {
           $match: {
             shop: shopId,
             createdAt: { $gte: sevenDaysAgo },
+            ...soldByFilter,
           },
         },
         {
@@ -199,14 +208,16 @@ exports.getDashboardData = async (req, res) => {
     // Net profit = gross profit - expenses
     const todayProfit = Math.max(0, grossProfit - totalExpenses);
     
-    // Calculate yesterday's profit for trend
-    const yesterdayProfitData = await Transaction.aggregate([
-      {
-        $match: {
-          shop: shopId,
-          createdAt: { $gte: yesterdayStart, $lte: yesterdayEnd },
+    // Calculate yesterday's profit for trend (hidden for cashiers)
+    const yesterdayProfitData = isCashier
+      ? [{ totalProfit: 0 }]
+      : await Transaction.aggregate([
+        {
+          $match: {
+            shop: shopId,
+            createdAt: { $gte: yesterdayStart, $lte: yesterdayEnd },
+          },
         },
-      },
       {
         $group: {
           _id: null,
@@ -221,9 +232,10 @@ exports.getDashboardData = async (req, res) => {
       ? Math.round(((todaySales - yesterdaySales) / yesterdaySales) * 100)
       : 0;
     
-    const profitTrend = yesterdayProfit > 0
-      ? Math.round(((todayProfit - yesterdayProfit) / yesterdayProfit) * 100)
-      : 0;
+    // Cashiers cannot see profit
+    const profitTrend = isCashier || yesterdayProfit <= 0
+      ? 0
+      : Math.round(((todayProfit - yesterdayProfit) / yesterdayProfit) * 100);
 
     // Get active workers count
     const activeWorkers = await User.countDocuments({
@@ -295,8 +307,8 @@ exports.getDashboardData = async (req, res) => {
         hasData,
         todaySales,
         todaySalesTrend: yesterdaySales > 0 ? salesTrend : null,
-        todayProfit,
-        todayProfitTrend: yesterdayProfit > 0 ? profitTrend : null,
+        todayProfit: isCashier ? 0 : todayProfit,
+        todayProfitTrend: isCashier ? null : (yesterdayProfit > 0 ? profitTrend : null),
         lowStockCount,
         activeWorkers: activeWorkersCount,
         onlineWorkers: onlineWorkersCount,

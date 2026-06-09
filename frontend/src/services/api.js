@@ -112,6 +112,15 @@ export const productService = {
     const response = await api.get('/products/categories');
     return response.data;
   },
+
+  // Download CSV template for a business type
+  downloadTemplate: async (businessType) => {
+    const response = await api.get('/products/template', {
+      params: { businessType },
+      responseType: 'blob',
+    });
+    return response.data;
+  },
 };
 
 // Sales/Transactions service

@@ -19,7 +19,6 @@ const DashboardOverview = () => {
   const navigate = useNavigate();
   const [fabOpen, setFabOpen] = useState(false);
   const [bannerDismissed, setBannerDismissed] = useState(false);
-  const [skippedEmpty, setSkippedEmpty] = useState(false);
   const { data, isLoading, isError, invalidate, refetch } = useDashboardQuery();
   const { user } = useUser();
   const { data: currentUser } = useCurrentUser();
@@ -118,101 +117,67 @@ const DashboardOverview = () => {
   } = data;
 
   // ── Trend helpers ────────────────────────────────────────────
-  const renderTrend = (trend) => {
+  const renderTrendCompact = (trend) => {
     if (trend === null || trend === undefined) {
-      return (
-        <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-neutral-100 text-neutral-500">
-          <Minus size={14} />
-          —
-        </span>
-      );
+      return <span className="text-[11px] font-medium text-neutral-400">—</span>;
     }
     const isUp = trend >= 0;
     return (
-      <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium ${
-        isUp ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'
-      }`}>
-        {isUp ? <ArrowUpRight size={14} /> : <ArrowDownRight size={14} />}
+      <span className={`inline-flex items-center gap-0.5 text-[11px] font-medium ${isUp ? 'text-[#10B981]' : 'text-[#EF4444]'}`}>
+        {isUp ? <ArrowUpRight size={12} /> : <ArrowDownRight size={12} />}
         {isUp ? '+' : ''}{trend}%
       </span>
     );
   };
 
-  // ── Empty state — no products yet (clean, no stat cards) ─────
-  if (!hasData && !skippedEmpty) {
-    const welcomeName = firstName || 'there';
-
-    return (
-      <div className="min-h-[70vh] flex flex-col items-center justify-center animate-fade-in px-4 py-8 sm:py-12">
-        {/* Welcome Section */}
-        <Package size={48} className="text-neutral-200 sm:hidden" />
-        <Package size={64} className="text-neutral-200 hidden sm:block" />
-        <h3 className="text-[20px] sm:text-2xl font-bold text-neutral-900 mt-5 text-center">
-          Welcome to Your Dashboard!
-        </h3>
-        <p className="text-[14px] sm:text-[15px] text-neutral-500 mt-2 max-w-[400px] text-center">
-          Your shop is set up and ready to go. What would you like to do first?
+  // ── Inline setup actions — shown when shop has no products yet ──
+  const setupCards = !hasData ? (
+    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+      {/* Add Product Card */}
+      <div
+        className="bg-white rounded-2xl border border-neutral-200 p-7 cursor-pointer hover:border-[#312E81] hover:shadow-md transition-all duration-200 hover:-translate-y-0.5 group"
+        onClick={() => navigate('/dashboard/inventory/add')}
+      >
+        <div className="w-14 h-14 rounded-xl bg-[#EEF2FF] flex items-center justify-center mb-4">
+          <Package size={32} style={{ color: '#312E81' }} />
+        </div>
+        <h4 className="text-lg font-semibold text-neutral-900 mb-2">
+          Add Your First Product
+        </h4>
+        <p className="text-sm text-neutral-500 mb-5">
+          Start tracking inventory and get insights on your bestsellers.
         </p>
-
-        {/* Action Cards — Add Product + Invite Workers */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-[720px] w-full mt-8">
-          {/* Add Product Card */}
-          <div
-            className="bg-white rounded-2xl border border-neutral-200 p-7 cursor-pointer hover:border-[#312E81] hover:shadow-md transition-all duration-200 hover:-translate-y-0.5 group"
-            onClick={() => navigate('/dashboard/inventory/add')}
-          >
-            <div className="w-14 h-14 rounded-xl bg-[#EEF2FF] flex items-center justify-center mb-4">
-              <Package size={32} style={{ color: '#312E81' }} />
-            </div>
-            <h4 className="text-lg font-semibold text-neutral-900 mb-2">
-              Add Your First Product
-            </h4>
-            <p className="text-sm text-neutral-500 mb-5 max-w-[250px]">
-              Start tracking inventory and get insights on your bestsellers.
-            </p>
-            <button className="flex items-center justify-center gap-2 w-full px-5 py-3 bg-[#312E81] hover:bg-[#1E1B4B] text-white font-semibold rounded-xl transition-all text-sm">
-              <Plus size={18} />
-              Add Product
-              <ArrowUpRight size={16} className="opacity-0 group-hover:opacity-100 transition-opacity" />
-            </button>
-          </div>
-
-          {/* Invite Workers Card */}
-          {role === ROLES.ADMIN && (
-          <div
-            className="bg-white rounded-2xl border border-neutral-200 p-7 cursor-pointer hover:border-[#312E81] hover:shadow-md transition-all duration-200 hover:-translate-y-0.5 group"
-            onClick={() => navigate('/dashboard/workers')}
-          >
-            <div className="w-14 h-14 rounded-xl bg-purple-50 flex items-center justify-center mb-4">
-              <Users size={32} style={{ color: '#8B5CF6' }} />
-            </div>
-            <h4 className="text-lg font-semibold text-neutral-900 mb-2">
-              Invite Your Workers
-            </h4>
-            <p className="text-sm text-neutral-500 mb-5 max-w-[250px]">
-              Add your staff to help manage the duka.
-            </p>
-            <button className="flex items-center justify-center gap-2 w-full px-5 py-3 bg-white border-[1.5px] border-neutral-300 text-neutral-700 font-semibold rounded-xl hover:bg-neutral-50 hover:border-[#312E81] transition-all text-sm">
-              <UserPlus size={18} />
-              Invite Workers
-              <ArrowUpRight size={16} className="opacity-0 group-hover:opacity-100 transition-opacity" />
-            </button>
-          </div>
-          )}
-        </div>
-
-        {/* Skip Link */}
-        <div className="text-center mt-6">
-          <button
-            onClick={() => setSkippedEmpty(true)}
-            className="text-sm text-[#312E81] font-medium hover:underline"
-          >
-            Skip for now &mdash; go to empty dashboard &rarr;
-          </button>
-        </div>
+        <button className="flex items-center justify-center gap-2 w-full px-5 py-3 bg-[#312E81] hover:bg-[#1E1B4B] text-white font-semibold rounded-xl transition-all text-sm">
+          <Plus size={18} />
+          Add Product
+          <ArrowUpRight size={16} className="opacity-0 group-hover:opacity-100 transition-opacity" />
+        </button>
       </div>
-    );
-  }
+
+      {/* Invite Workers Card */}
+      {role === ROLES.ADMIN && (
+      <div
+        className="bg-white rounded-2xl border border-neutral-200 p-7 cursor-pointer hover:border-[#312E81] hover:shadow-md transition-all duration-200 hover:-translate-y-0.5 group"
+        onClick={() => navigate('/dashboard/workers')}
+      >
+        <div className="w-14 h-14 rounded-xl bg-purple-50 flex items-center justify-center mb-4">
+          <Users size={32} style={{ color: '#8B5CF6' }} />
+        </div>
+        <h4 className="text-lg font-semibold text-neutral-900 mb-2">
+          Invite Your Workers
+        </h4>
+        <p className="text-sm text-neutral-500 mb-5">
+          Add your staff to help manage the duka.
+        </p>
+        <button className="flex items-center justify-center gap-2 w-full px-5 py-3 bg-white border-[1.5px] border-neutral-300 text-neutral-700 font-semibold rounded-xl hover:bg-neutral-50 hover:border-[#312E81] transition-all text-sm">
+          <UserPlus size={18} />
+          Invite Workers
+          <ArrowUpRight size={16} className="opacity-0 group-hover:opacity-100 transition-opacity" />
+        </button>
+      </div>
+      )}
+    </div>
+  ) : null;
 
   // ── Data state — full dashboard ──────────────────────────────
   return (
@@ -246,135 +211,115 @@ const DashboardOverview = () => {
         </div>
       )}
 
+      {/* Setup Actions — show inline when shop has no products */}
+      {setupCards && (
+        <div className="space-y-4">
+          <p className="text-[15px] font-semibold text-neutral-700 text-center sm:text-left">
+            Your shop is all set up. Start by adding products to your inventory.
+          </p>
+          {setupCards}
+        </div>
+      )}
+
       {/* Page Header */}
       <div>
         <h1 className="text-2xl font-bold text-neutral-900">Dashboard Overview</h1>
         <p className="text-sm text-neutral-600 mt-1">Here&apos;s how your duka is performing today</p>
       </div>
 
-      {/* Stat Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      {/* Stat Cards — 2×2 grid mobile, 4-col desktop */}
+      <div className="grid grid-cols-2 gap-2.5 sm:gap-3 lg:grid-cols-4 lg:gap-4">
         {/* Today's Sales */}
-        <div className="bg-white rounded-2xl border border-neutral-100 p-5 hover:shadow-md hover:-translate-y-0.5 transition-all duration-200">
-          <div className="flex items-start justify-between mb-3">
-            <div>
-              <p className="text-[13px] font-medium text-neutral-500 uppercase tracking-wide">{isCashier ? 'My Sales Today' : 'Today&apos;s Sales'}</p>
-              <p className="text-[28px] font-bold text-neutral-900 mt-1">{formatCurrency(todaySales)}</p>
-            </div>
-            <div className="w-10 h-10 rounded-lg bg-[#EEF2FF] flex items-center justify-center">
-              <TrendingUp size={20} style={{ color: '#312E81' }} />
-            </div>
+        <div className="bg-white rounded-2xl border border-neutral-100 p-3.5 shadow-sm flex flex-col justify-between min-h-[100px]">
+          <div className="flex items-center justify-between mb-1">
+            <p className="text-[11px] font-medium text-neutral-500 uppercase tracking-[0.5px]">{isCashier ? 'My Sales' : 'Sales'}</p>
+            <TrendingUp size={18} className="text-neutral-400" />
           </div>
-          <div className="flex items-center gap-2">
-            {renderTrend(todaySalesTrend)}
-            <span className="text-[13px] text-neutral-500">vs yesterday</span>
+          <p className="text-[22px] font-bold text-neutral-900 leading-tight">{formatCurrency(todaySales)}</p>
+          <div className="flex items-center gap-1.5 mt-0.5">
+            {renderTrendCompact(todaySalesTrend)}
+            <span className="text-[11px] text-neutral-400">vs yesterday</span>
           </div>
         </div>
 
         {/* Today's Profit (Highlighted) — hidden for cashier, show "—" for manager */}
         {showProfit && (
         <div
-          className="bg-white rounded-2xl border border-neutral-100 p-5 hover:shadow-md hover:-translate-y-0.5 transition-all duration-200"
+          className="rounded-2xl border p-3.5 shadow-sm flex flex-col justify-between min-h-[100px]"
           style={{
-            borderLeft: '4px solid #E8835C',
-            background: 'linear-gradient(135deg, #FDF2EC 0%, #FFFFFF 100%)',
+            background: todayProfit > 0 ? 'linear-gradient(180deg, #FDF2EC 0%, #FFFFFF 100%)' : '#FFFFFF',
+            borderColor: todayProfit > 0 ? '#E8835C40' : '#F1F5F9',
+            borderBottom: todayProfit > 0 ? '3px solid #E8835C' : '3px solid #E5E7EB',
           }}
         >
-          <div className="flex items-start justify-between mb-3">
-            <div>
-              <p className="text-[13px] font-medium text-neutral-500 uppercase tracking-wide">Today&apos;s Profit</p>
-              <p className="text-[28px] font-bold mt-1" style={{ color: isManager ? '#D1D5DB' : '#E8835C' }}>
-                {isManager ? '—' : formatCurrency(todayProfit)}
-              </p>
+          <div>
+            <div className="flex items-center justify-between mb-1">
+              <p className="text-[11px] font-medium text-neutral-500 uppercase tracking-[0.5px]">Profit</p>
+              <DollarSign size={18} style={{ color: todayProfit > 0 ? '#E8835C' : '#D1D5DB' }} />
             </div>
-            <div className="w-10 h-10 rounded-lg flex items-center justify-center" style={{ backgroundColor: '#FDF2EC' }}>
-              <DollarSign size={20} style={{ color: '#E8835C' }} />
-            </div>
+            <p className="text-[22px] font-bold leading-tight" style={{ color: isManager ? '#D1D5DB' : todayProfit > 0 ? '#E8835C' : '#9CA3AF' }}>
+              {isManager ? '—' : formatCurrency(todayProfit)}
+            </p>
           </div>
-          <div className="flex items-center gap-2">
-            {isManager ? renderTrend(null) : renderTrend(todayProfitTrend)}
-            <span className="text-[13px] text-neutral-500">vs yesterday</span>
+          <div className="flex items-center gap-1.5 mt-0.5">
+            {isManager ? renderTrendCompact(null) : renderTrendCompact(todayProfitTrend)}
+            <span className="text-[11px] text-neutral-400">vs yesterday</span>
           </div>
         </div>
         )}
 
         {/* Low Stock Items */}
         <div
-          className="bg-white rounded-2xl border border-neutral-100 p-5 hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 cursor-pointer"
+          className="bg-white rounded-2xl border border-neutral-100 p-3.5 shadow-sm flex flex-col justify-between min-h-[100px] cursor-pointer hover:shadow-md transition-shadow"
           onClick={() => navigate('/dashboard/inventory?filter=low-stock')}
         >
-          <div className="flex items-start justify-between mb-3">
-            <div>
-              <p className="text-[13px] font-medium text-neutral-500 uppercase tracking-wide">Low Stock Items</p>
-              <p className={`text-[28px] font-bold mt-1 ${
-                lowStockCount > 0 ? 'text-orange-600' : 'text-neutral-900'
-              }`}>
-                {lowStockCount} {lowStockCount === 1 ? 'Item' : 'Items'}
-              </p>
-            </div>
-            <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
-              lowStockCount > 0 ? 'bg-orange-50' : 'bg-green-50'
-            }`}>
-              <AlertTriangle size={20} style={{ color: lowStockCount > 0 ? '#F59E0B' : '#10B981' }} />
-            </div>
+          <div className="flex items-center justify-between mb-1">
+            <p className="text-[11px] font-medium text-neutral-500 uppercase tracking-[0.5px]">Low Stock</p>
+            <AlertTriangle size={18} style={{ color: lowStockCount > 0 ? '#F59E0B' : '#10B981' }} />
           </div>
-          {lowStockCount > 0 ? (
-            <p className="text-[13px] font-medium text-orange-600">Need restock</p>
-          ) : (
-            <p className="text-[13px] font-medium text-green-600">All stocked &#10003;</p>
-          )}
+          <p className="text-[22px] font-bold leading-tight" style={{ color: lowStockCount > 0 ? '#F59E0B' : '#9CA3AF' }}>
+            {lowStockCount} {lowStockCount === 1 ? 'item' : 'items'}
+          </p>
+          <p className="text-[11px] font-medium mt-0.5" style={{ color: lowStockCount > 0 ? '#F59E0B' : '#10B981' }}>
+            {lowStockCount > 0 ? 'Need restock' : 'All good ✓'}
+          </p>
         </div>
 
         {/* Active Workers */}
-        <div className="bg-white rounded-2xl border border-neutral-100 p-5 hover:shadow-md hover:-translate-y-0.5 transition-all duration-200">
-          <div className="flex items-start justify-between mb-3">
-            <div>
-              <p className="text-[13px] font-medium text-neutral-500 uppercase tracking-wide">Active Workers</p>
-              <p className="text-[28px] font-bold text-neutral-900 mt-1">{activeWorkers} Online</p>
-            </div>
-            <div className="w-10 h-10 rounded-lg bg-purple-50 flex items-center justify-center">
-              <Users size={20} style={{ color: '#8B5CF6' }} />
-            </div>
+        <div className="bg-white rounded-2xl border border-neutral-100 p-3.5 shadow-sm flex flex-col justify-between min-h-[100px]">
+          <div className="flex items-center justify-between mb-1">
+            <p className="text-[11px] font-medium text-neutral-500 uppercase tracking-[0.5px]">Workers</p>
+            <Users size={18} className="text-neutral-400" />
           </div>
-          <div className="flex items-center gap-2">
+          <p className="text-[22px] font-bold text-neutral-900 leading-tight">{activeWorkers} online</p>
+          <div className="flex items-center gap-1 mt-1">
             {isCashier ? (
-              /* Cashier: count only, no avatar details */
               <>
-                <div className="w-2 h-2 rounded-full bg-green-500" />
-                <span className="text-[13px] text-neutral-500">{onlineWorkers} Active now</span>
+                <span className="inline-block w-2 h-2 rounded-full bg-green-500" />
+                <span className="text-[11px] text-neutral-500">{onlineWorkers} active now</span>
               </>
             ) : (
-              /* Owner/Manager: full avatar details */
               <>
                 {onlineWorkers > 0 ? (
-                  <div className="flex items-center -space-x-2">
-                    {Array.from({ length: Math.min(onlineWorkers, 3) }).map((_, i) => (
-                      <div
+                  <div className="flex items-center gap-0.5">
+                    {Array.from({ length: Math.min(onlineWorkers, 5) }).map((_, i) => (
+                      <span
                         key={i}
-                        className="w-5 h-5 rounded-full border-2 border-white flex items-center justify-center"
-                        style={{
-                          backgroundColor: i === 0 ? '#312E81' : i === 1 ? '#E8835C' : '#8B5CF6',
-                          zIndex: 3 - i,
-                        }}
-                      >
-                        <span className="text-[8px] font-bold text-white">
-                          {String.fromCharCode(65 + i)}
-                        </span>
-                      </div>
+                        className="inline-block w-2 h-2 rounded-full"
+                        style={{ backgroundColor: ['#312E81', '#E8835C', '#8B5CF6', '#10B981', '#F59E0B'][i] }}
+                      />
                     ))}
-                    {onlineWorkers > 3 && (
-                      <div
-                        className="w-5 h-5 rounded-full border-2 border-white bg-neutral-400 flex items-center justify-center"
-                        style={{ zIndex: 0 }}
-                      >
-                        <span className="text-[7px] font-bold text-white">+{onlineWorkers - 3}</span>
-                      </div>
+                    {onlineWorkers > 5 && (
+                      <span className="text-[10px] text-neutral-400 ml-0.5">+{onlineWorkers - 5}</span>
                     )}
+                    <span className="text-[11px] text-neutral-400 ml-1">{onlineWorkers} active</span>
                   </div>
                 ) : (
-                  <div className="w-2 h-2 rounded-full bg-green-500" />
+                  <>
+                    <span className="inline-block w-2 h-2 rounded-full bg-green-500" />
+                    <span className="text-[11px] text-neutral-400">{onlineWorkers} active now</span>
+                  </>
                 )}
-                <span className="text-[13px] text-neutral-500">{onlineWorkers} Active now</span>
               </>
             )}
           </div>

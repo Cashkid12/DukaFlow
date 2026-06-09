@@ -18,6 +18,8 @@ import DeleteConfirmModal from '../components/inventory/DeleteConfirmModal';
 import AddProductDropdown from '../components/inventory/AddProductDropdown';
 import BarcodeComingSoonModal from '../components/inventory/BarcodeComingSoonModal';
 import CsvUploadModal from '../components/inventory/CsvUploadModal';
+import { useCurrentUser } from '../hooks/useCurrentUser';
+import { canAddProduct, canEditProduct, canDeleteProduct, ROLES } from '../utils/permissions';
 
 /**
  * Returns a stock status badge config for a product.
@@ -107,6 +109,14 @@ const InventoryPage = () => {
 
   // Dynamic attributes from filters endpoint
   const dynamicAttributes = filtersData?.attributes || {};
+
+  // Role-based permissions
+  const { data: currentUser } = useCurrentUser();
+  const role = currentUser?.role || ROLES.ADMIN;
+  const canAdd = canAddProduct(role);
+  const canEdit = canEditProduct(role);
+  const canDelete = canDeleteProduct(role);
+  const isCashier = role === ROLES.CASHIER;
 
   // Check if any filter is active
   const hasActiveFilters = selectedCategory !== 'all' ||
@@ -218,10 +228,12 @@ const InventoryPage = () => {
           {/* Header */}
           <div className="flex items-center justify-between">
             <h1 className="text-2xl font-bold text-neutral-900">Inventory</h1>
+            {canAdd && (
             <AddProductDropdown
               onBarcodeClick={() => setShowBarcodeModal(true)}
               onCsvClick={() => setShowCsvModal(true)}
             />
+            )}
           </div>
 
           {/* Filter bar (simplified) */}
@@ -257,7 +269,7 @@ const InventoryPage = () => {
               Your inventory is empty
             </h3>
             <p className="lg:text-[15px] text-sm text-neutral-500 mt-2 text-center max-w-[400px] px-4">
-              Add your first product to start tracking stock levels, sales, and profits.
+              {isCashier ? 'Ask your manager to add products to the inventory.' : 'Add your first product to start tracking stock levels, sales, and profits.'}
             </p>
             <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 mt-7 w-full sm:w-auto px-4 sm:px-0">
               <button
@@ -309,10 +321,12 @@ const InventoryPage = () => {
           {/* Header */}
           <div className="flex items-center justify-between">
             <h1 className="text-2xl font-bold text-neutral-900">Inventory</h1>
+            {canAdd && (
             <AddProductDropdown
               onBarcodeClick={() => setShowBarcodeModal(true)}
               onCsvClick={() => setShowCsvModal(true)}
             />
+            )}
           </div>
 
           {/* Filter bar with CategoryPills */}
@@ -344,8 +358,9 @@ const InventoryPage = () => {
               No products in {selectedCategory}
             </h3>
             <p className="text-sm text-[#64748B] mb-6 text-center max-w-sm px-4">
-              Add your first product in this category
+              {isCashier ? 'No products in this category yet.' : 'Add your first product in this category'}
             </p>
+            {canAdd && (
             <div className="flex flex-col sm:flex-row gap-3 items-center">
               <button
                 onClick={() => navigate(`/dashboard/inventory/add?category=${encodeURIComponent(selectedCategory)}`)}
@@ -361,9 +376,11 @@ const InventoryPage = () => {
                 Or Clear Filter to see all products
               </button>
             </div>
+            )}
           </div>
 
           {/* FAB */}
+          {canAdd && (
           <button
             onClick={() => navigate('/dashboard/inventory/add')}
             className="fixed md:bottom-6 md:right-6 bottom-20 right-4 w-14 h-14 rounded-2xl bg-[#312E81] text-white shadow-lg hover:bg-[#1E1B4B] hover:scale-105 hover:shadow-xl transition-all duration-200 flex items-center justify-center z-40"
@@ -371,6 +388,7 @@ const InventoryPage = () => {
           >
             <Package size={24} />
           </button>
+          )}
         </div>
       </div>
     );
@@ -386,10 +404,12 @@ const InventoryPage = () => {
           {/* Header */}
           <div className="flex items-center justify-between">
             <h1 className="text-2xl font-bold text-neutral-900">Inventory</h1>
+            {canAdd && (
             <AddProductDropdown
               onBarcodeClick={() => setShowBarcodeModal(true)}
               onCsvClick={() => setShowCsvModal(true)}
             />
+            )}
           </div>
 
           {/* Filter bar (simplified) */}
@@ -433,6 +453,7 @@ const InventoryPage = () => {
           </div>
 
           {/* FAB */}
+          {canAdd && (
           <button
             onClick={() => navigate('/dashboard/inventory/add')}
             className="fixed md:bottom-6 md:right-6 bottom-20 right-4 w-14 h-14 rounded-2xl bg-[#312E81] text-white shadow-lg hover:bg-[#1E1B4B] hover:scale-105 hover:shadow-xl transition-all duration-200 flex items-center justify-center z-40"
@@ -440,6 +461,7 @@ const InventoryPage = () => {
           >
             <Package size={24} />
           </button>
+          )}
         </div>
       </div>
     );
@@ -460,10 +482,12 @@ const InventoryPage = () => {
             </p>
           </div>
           <div className="flex gap-2">
+            {canAdd && (
             <AddProductDropdown
               onBarcodeClick={() => setShowBarcodeModal(true)}
               onCsvClick={() => setShowCsvModal(true)}
             />
+            )}
           </div>
         </div>
 
@@ -670,10 +694,10 @@ const InventoryPage = () => {
               <ProductCard
                 key={product._id}
                 product={product}
-                onEdit={(p) => navigate(`/inventory/${p._id}`)}
-                onRestock={setRestockProduct}
-                onDuplicate={(p) => navigate(`/dashboard/inventory/add?duplicate=${p._id}`)}
-                onDelete={setDeleteProduct}
+                onEdit={canEdit ? (p) => navigate(`/inventory/${p._id}`) : undefined}
+                onRestock={canEdit ? setRestockProduct : undefined}
+                onDuplicate={canAdd ? (p) => navigate(`/dashboard/inventory/add?duplicate=${p._id}`) : undefined}
+                onDelete={canDelete ? setDeleteProduct : undefined}
               />
             ))}
           </div>
@@ -795,6 +819,7 @@ const InventoryPage = () => {
         )}
 
         {/* FAB */}
+        {canAdd && (
         <button
           onClick={() => navigate('/dashboard/inventory/add')}
           className="fixed md:bottom-6 md:right-6 bottom-20 right-4 w-14 h-14 rounded-2xl bg-[#312E81] text-white shadow-lg hover:bg-[#1E1B4B] hover:scale-105 hover:shadow-xl transition-all duration-200 flex items-center justify-center z-40"
@@ -802,6 +827,7 @@ const InventoryPage = () => {
         >
           <Plus size={24} />
         </button>
+        )}
       </div>
 
       {/* Restock Modal */}

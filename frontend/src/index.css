@@ -362,6 +362,10 @@ img, video, canvas, svg {
   animation: slideRight 0.3s ease-out;
 }
 
+.animate-slide-up {
+  animation: fadeSlideUp 0.3s ease-out;
+}
+
 /* Focus Styles for Accessibility */
 *:focus-visible {
   outline: 2px solid #312E81;

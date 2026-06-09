@@ -10,6 +10,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@clerk/clerk-react';
 import { formatCurrency } from '../utils/formatters';
 import useCurrentUser from '../hooks/useCurrentUser';
+import { ROLES } from '../utils/permissions';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 const SOCKET_URL = import.meta.env.VITE_SOCKET_URL || 'http://localhost:5000';
@@ -133,7 +134,7 @@ const SummaryCards = ({ workers }) => {
 };
 
 // ─── Worker Card ─────────────────────────────────────────────────────────────
-const WorkerCard = ({ worker, onView, onEdit, onResend, onCancel }) => {
+const WorkerCard = ({ worker, onView, onEdit, onResend, onCancel, isResending }) => {
   const roleCfg = ROLE_CONFIG[worker.role] || ROLE_CONFIG.cashier;
   const Icon = roleCfg.icon;
   const initials = (worker.fullName || '').split(' ').map((n) => n[0]).join('').slice(0, 2).toUpperCase();
@@ -261,9 +262,11 @@ const WorkerCard = ({ worker, onView, onEdit, onResend, onCancel }) => {
         <div className="flex gap-2 mt-4 pt-3 border-t border-neutral-200">
           <button
             onClick={(e) => { e.stopPropagation(); onResend(worker); }}
-            className="flex-1 flex items-center justify-center gap-1.5 py-2 text-xs font-medium text-[#312E81] bg-[#EEF2FF] rounded-lg hover:bg-[#DBEAFE] transition-colors"
+            disabled={isResending}
+            className="flex-1 flex items-center justify-center gap-1.5 py-2 text-xs font-medium text-[#312E81] bg-[#EEF2FF] rounded-lg hover:bg-[#DBEAFE] transition-colors disabled:opacity-50"
           >
-            <RefreshCw size={13} /> Resend Invitation
+            {isResending ? <Loader2 size={13} className="animate-spin" /> : <RefreshCw size={13} />}
+            {isResending ? 'Resending...' : 'Resend Invitation'}
           </button>
           <button
             onClick={(e) => { e.stopPropagation(); onCancel(worker); }}
@@ -429,7 +432,7 @@ const AddWorkerModal = ({ show, onClose, onSubmit, submitting }) => {
           {/* Info Box */}
           <div className="p-3 bg-[#EEF2FF] rounded-[10px] mb-5">
             <p className="text-[13px] text-[#4338CA]">
-              💡 They'll receive an email from Clerk with a link to set up their account. Once they accept, they'll appear in your worker list.
+              💡 They'll receive an invitation email from DukaFlow with a link to join your shop. Once they accept, they'll appear in your worker list.
             </p>
           </div>
 
@@ -471,11 +474,11 @@ const InviteSuccessModal = ({ show, worker, onInviteAnother, onDone }) => {
         <div className="bg-white rounded-[20px] p-8 max-w-[480px] w-full shadow-2xl animate-fadeIn">
           {/* Success Header */}
           <div className="text-center mb-6">
-            <div className="w-16 h-16 rounded-full bg-[#D1FAE5] flex items-center justify-center mx-auto mb-4">
-              <CheckCircle size={40} className="text-[#10B981]" />
+            <div className="w-20 h-20 rounded-full bg-[#D1FAE5] flex items-center justify-center mx-auto mb-4">
+              <CheckCircle size={48} className="text-[#10B981]" />
             </div>
-            <h2 className="text-xl font-bold text-[#1E293B] mb-1">Invitation Sent!</h2>
-            <p className="text-sm text-[#64748B]">
+            <h2 className="text-xl font-bold text-neutral-900 mb-1">Invitation Sent!</h2>
+            <p className="text-sm text-neutral-600">
               An invitation email has been sent to <strong>{worker.email}</strong>.
             </p>
           </div>
@@ -530,7 +533,7 @@ const InviteSuccessModal = ({ show, worker, onInviteAnother, onDone }) => {
 };
 
 // ─── Cancel Confirmation Modal ───────────────────────────────────────────────
-const CancelConfirmationModal = ({ worker, onConfirm, onClose }) => {
+const CancelConfirmationModal = ({ worker, onConfirm, onClose, loading }) => {
   if (!worker) return null;
 
   return (
@@ -548,15 +551,18 @@ const CancelConfirmationModal = ({ worker, onConfirm, onClose }) => {
           <div className="flex gap-3">
             <button
               onClick={onClose}
-              className="flex-1 py-3 border border-[#CBD5E1] text-[#64748B] rounded-xl font-medium text-sm hover:bg-neutral-50 transition-colors"
+              disabled={loading}
+              className="flex-1 py-3 border border-[#CBD5E1] text-[#64748B] rounded-xl font-medium text-sm hover:bg-neutral-50 transition-colors disabled:opacity-50"
             >
               Keep
             </button>
             <button
               onClick={onConfirm}
-              className="flex-1 py-3 bg-[#EF4444] text-white rounded-xl font-semibold text-sm hover:bg-[#DC2626] transition-colors"
+              disabled={loading}
+              className="flex-1 py-3 bg-[#EF4444] text-white rounded-xl font-semibold text-sm hover:bg-[#DC2626] transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
             >
-              Yes, Cancel
+              {loading ? <Loader2 size={16} className="animate-spin" /> : null}
+              {loading ? 'Cancelling...' : 'Yes, Cancel'}
             </button>
           </div>
         </div>
@@ -580,6 +586,8 @@ const WorkersPage = () => {
   const [modalKey, setModalKey] = useState(0);
   const [cancelTarget, setCancelTarget] = useState(null); // worker to cancel
   const [toast, setToast] = useState(null); // { message, type: 'success'|'error' }
+  const [resendingIds, setResendingIds] = useState(new Set());
+  const [cancelling, setCancelling] = useState(false);
 
   // Fetch workers
   const { data: workers = [], isLoading, isError, refetch } = useQuery({
@@ -601,7 +609,15 @@ const WorkersPage = () => {
 
   // Socket for real-time updates (join shop room to receive scoped events)
   const { data: currentUser } = useCurrentUser();
+  const role = currentUser?.role;
   const shopId = currentUser?.shop?._id;
+
+  // Route guard: only managers and admins can access workers
+  useEffect(() => {
+    if (role && role === ROLES.CASHIER) {
+      navigate('/dashboard', { replace: true });
+    }
+  }, [role, navigate]);
 
   useEffect(() => {
     const socket = io(SOCKET_URL, { transports: ['websocket', 'polling'], reconnection: true });
@@ -643,6 +659,7 @@ const WorkersPage = () => {
 
   // Resend invite
   const handleResend = useCallback(async (worker) => {
+    setResendingIds((prev) => new Set(prev).add(worker._id));
     try {
       const token = await getToken();
       const res = await fetch(`${API_BASE_URL}/workers/${worker._id}/resend-invite`, {
@@ -661,6 +678,12 @@ const WorkersPage = () => {
     } catch {
       setToast({ message: 'Network error. Please try again.', type: 'error' });
       setTimeout(() => setToast(null), 4000);
+    } finally {
+      setResendingIds((prev) => {
+        const next = new Set(prev);
+        next.delete(worker._id);
+        return next;
+      });
     }
   }, [getToken, queryClient]);
 
@@ -671,6 +694,7 @@ const WorkersPage = () => {
 
   const handleCancel = useCallback(async () => {
     if (!cancelTarget) return;
+    setCancelling(true);
     try {
       const token = await getToken();
       const res = await fetch(`${API_BASE_URL}/workers/${cancelTarget._id}/cancel-invite`, {
@@ -679,8 +703,11 @@ const WorkersPage = () => {
       });
       if (res.ok) {
         queryClient.invalidateQueries({ queryKey: ['workers'] });
+        setToast({ message: `Invitation to ${cancelTarget.fullName} cancelled`, type: 'success' });
+        setTimeout(() => setToast(null), 3500);
       }
     } catch { /* ignore */ }
+    setCancelling(false);
     setCancelTarget(null);
   }, [getToken, queryClient, cancelTarget]);
 
@@ -869,6 +896,7 @@ const WorkersPage = () => {
                         onView={handleViewWorker}
                         onResend={handleResend}
                         onCancel={confirmCancel}
+                        isResending={resendingIds.has(worker._id)}
                       />
                     ))}
                   </div>
@@ -929,6 +957,7 @@ const WorkersPage = () => {
         worker={cancelTarget}
         onConfirm={handleCancel}
         onClose={() => setCancelTarget(null)}
+        loading={cancelling}
       />
 
       {/* Toast */}

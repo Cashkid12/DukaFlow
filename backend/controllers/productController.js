@@ -613,7 +613,15 @@ exports.importCsv = async (req, res) => {
 // @access  Private
 exports.downloadTemplate = async (req, res) => {
   try {
-    const businessType = req.query.businessType || req.query.type;
+    const { businessType } = req.query;
+
+    // Validate businessType is provided
+    if (!businessType) {
+      return res.status(400).json({
+        success: false,
+        message: 'Business type is required',
+      });
+    }
 
     // Business-type-specific templates
     const BUSINESS_TYPE_COLUMNS = {
@@ -643,8 +651,16 @@ exports.downloadTemplate = async (req, res) => {
       },
     };
 
-    const tpl = BUSINESS_TYPE_COLUMNS[businessType] || BUSINESS_TYPE_COLUMNS.clothing;
-    const btKey = businessType || 'clothing';
+    // Validate businessType is supported
+    if (!BUSINESS_TYPE_COLUMNS[businessType]) {
+      const supportedTypes = Object.keys(BUSINESS_TYPE_COLUMNS).join(', ');
+      return res.status(400).json({
+        success: false,
+        message: `Invalid business type. Supported types: ${supportedTypes}`,
+      });
+    }
+
+    const tpl = BUSINESS_TYPE_COLUMNS[businessType];
 
     // Helper: wrap values containing commas or special chars in double quotes
     const escapeCsvField = (val) => {
@@ -659,7 +675,7 @@ exports.downloadTemplate = async (req, res) => {
     const exampleRow = tpl.example.map(escapeCsvField).join(',');
     // UTF-8 BOM for Excel compatibility + CRLF line endings
     const csvContent = '\uFEFF' + headerRow + '\r\n' + exampleRow + '\r\n';
-    const filename = `dukaflow-${btKey}-template.csv`;
+    const filename = `dukaflow-${businessType}-template.csv`;
 
     res.setHeader('Content-Type', 'text/csv; charset=utf-8');
     res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);

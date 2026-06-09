@@ -108,7 +108,8 @@ export const useDashboardQuery = () => {
       const raw = result.data;
 
       return {
-        hasData: computeHasData(raw),
+        // Trust backend's hasData computation — it checks real product count
+        hasData: raw.hasData ?? computeHasData(raw),
         shopId: raw.shopId || null,
         shopName: raw.shopName || 'Your Shop',
         todaySales: raw.todaySales ?? 0,
@@ -128,7 +129,7 @@ export const useDashboardQuery = () => {
     staleTime: 0,
     refetchOnMount: 'always',
     refetchOnWindowFocus: true,
-    refetchInterval: 60 * 1000,
+    refetchInterval: 30 * 1000,
     retry: 1,
     placeholderData: (prev) => prev,
   });

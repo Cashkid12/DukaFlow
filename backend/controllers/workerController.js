@@ -7,7 +7,7 @@ const CLIENT_URL = process.env.CLIENT_URL || 'http://localhost:5173';
 
 // ─── Email template helpers ────────────────────────────────────────────────
 
-const buildInvitationEmail = ({ workerName, shopName, inviterName, role, acceptUrl }) => {
+const buildInvitationEmail = ({ workerName, shopName, inviterName, role, email, acceptUrl }) => {
   const roleLabel = role.charAt(0).toUpperCase() + role.slice(1);
   return `
 <!DOCTYPE html>
@@ -36,7 +36,8 @@ const buildInvitationEmail = ({ workerName, shopName, inviterName, role, acceptU
             <tr><td style="padding:20px 24px">
               <table width="100%" cellpadding="0" cellspacing="0">
                 <tr><td style="padding:6px 0;font-size:14px;color:#1E293B"><strong>🏪 Shop:</strong> ${shopName}</td></tr>
-                <tr><td style="padding:6px 0;font-size:14px;color:#1E293B"><strong>🔖 Role:</strong> ${roleLabel}</td></tr>
+                <tr><td style="padding:6px 0;font-size:14px;color:#1E293B"><strong>👤 Your Role:</strong> ${roleLabel}</td></tr>
+                <tr><td style="padding:6px 0;font-size:14px;color:#1E293B"><strong>📧 Email:</strong> ${email}</td></tr>
                 <tr><td style="padding:6px 0;font-size:14px;color:#1E293B"><strong>👋 Invited by:</strong> ${inviterName}</td></tr>
               </table>
             </td></tr>
@@ -538,6 +539,7 @@ exports.inviteWorker = async (req, res) => {
           shopName,
           inviterName,
           role,
+          email: normalizedEmail,
           acceptUrl,
         }),
       });
@@ -722,6 +724,7 @@ exports.resendInvite = async (req, res) => {
           shopName,
           inviterName,
           role: worker.role,
+          email: worker.email,
           acceptUrl,
         }),
       });

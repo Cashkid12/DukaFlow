@@ -1,10 +1,13 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { settingsService } from '../services/api';
 import { Button } from '../components/Button';
 import { Input, TextArea } from '../components/Form';
 import { Badge } from '../components/Badge';
 import { Modal } from '../components/Modal';
+import { useCurrentUser } from '../hooks/useCurrentUser';
+import { ROLES } from '../utils/permissions';
 import {
   Building2, CreditCard, Shield, Package, Store, Pencil, Trash2, Plus, Download, FileText, 
   AlertTriangle, CheckCircle, GripVertical, Upload, X, ChevronRight, Archive, 
@@ -39,6 +42,17 @@ const PLAN_PRICES = { starta: 750, kuuza: 1500, biashara: 3000 };
 const PLAN_LABELS = { starta: 'Starta', kuuza: 'Kuuza', biashara: 'Biashara' };
 
 export default function SettingsPage() {
+  const navigate = useNavigate();
+  const { data: currentUser } = useCurrentUser();
+  const role = currentUser?.role;
+
+  // Route guard: only admins can access settings
+  useEffect(() => {
+    if (role && role !== ROLES.ADMIN) {
+      navigate('/dashboard', { replace: true });
+    }
+  }, [role, navigate]);
+
   const queryClient = useQueryClient();
   const [activeTab, setActiveTab] = useState('shop');
   const [toast, setToast] = useState(null);

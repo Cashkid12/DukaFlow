@@ -63,10 +63,11 @@ export const canManageCustomers = (role) => hasMinRole(role, 'manager');
 
 // ─── Navigation Visibility ────────────────────────────────────────────────────
 export const getSidebarItems = (role) => {
+  const isCashier = role === ROLES.CASHIER;
   const items = [
-    { key: 'dashboard', label: 'Dashboard', path: '/dashboard' },
+    { key: 'dashboard', label: isCashier ? 'Home' : 'Dashboard', path: '/dashboard' },
     { key: 'inventory', label: 'Inventory', path: '/dashboard/inventory' },
-    { key: 'sales', label: 'Sales', path: '/dashboard/sales' },
+    { key: 'sales', label: isCashier ? 'New Sale' : 'Sales', path: '/dashboard/sales' },
   ];
 
   if (hasMinRole(role, 'manager')) {
@@ -82,10 +83,11 @@ export const getSidebarItems = (role) => {
 };
 
 export const getMobileNavItems = (role) => {
+  const isCashier = role === ROLES.CASHIER;
   const items = [
     { key: 'home', label: 'Home', path: '/dashboard' },
     { key: 'inventory', label: 'Inventory', path: '/dashboard/inventory' },
-    { key: 'sales', label: 'Sales', path: '/dashboard/sales' },
+    { key: 'sales', label: isCashier ? 'New Sale' : 'Sales', path: '/dashboard/sales' },
   ];
 
   if (role === ROLES.ADMIN) {

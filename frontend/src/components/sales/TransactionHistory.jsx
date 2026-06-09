@@ -7,6 +7,7 @@ import {
   Banknote, Smartphone, User, ChevronLeft, ChevronRight,
   Clock, MoreVertical, CheckCircle, AlertCircle,
   FileText, Calendar, Loader2, Hash, Phone, Filter,
+  SlidersHorizontal, ClipboardList,
 } from 'lucide-react';
 import ReceiptView, { printReceipt, generateWhatsAppMessage } from './ReceiptView';
 import { formatCurrency, formatDateTime } from '../../utils/formatters';
@@ -80,16 +81,19 @@ const fetchSales = async ({ token, page, limit, search, paymentMethod, startDate
 };
 
 const EmptyHistory = ({ onNewSale }) => (
-  <div className="flex flex-col items-center justify-center py-20 px-4 text-center">
-    <div className="w-16 h-16 rounded-full bg-neutral-100 flex items-center justify-center mb-4">
-      <FileText size={40} className="text-neutral-200" />
+  <div className="flex flex-col items-center justify-center min-h-[50vh] py-12 px-4 text-center">
+    <div className="w-[88px] h-[88px] rounded-full bg-neutral-100 flex items-center justify-center mb-5">
+      <ClipboardList size={48} className="text-neutral-300" />
     </div>
-    <h2 className="text-xl font-bold text-[#1E293B] mb-2">No transactions yet</h2>
-    <p className="text-[15px] text-[#64748B] max-w-md mb-6">
+    <h2 className="text-lg sm:text-xl font-bold text-neutral-900 mb-2">No transactions yet</h2>
+    <p className="text-sm text-neutral-500 max-w-[280px] leading-relaxed mb-7">
       Sales you record will appear here. Go to New Sale to record your first sale.
     </p>
-    <button onClick={onNewSale} className="px-6 py-3 bg-[#312E81] text-white rounded-xl hover:bg-[#1E1B4B] transition-colors font-medium text-sm">
-      Record Your First Sale →
+    <button
+      onClick={onNewSale}
+      className="w-full max-w-[300px] h-12 px-6 bg-[#312E81] text-white rounded-[12px] hover:bg-[#1E1B4B] transition-colors font-semibold text-[15px] flex items-center justify-center gap-2"
+    >
+      💰 Record Your First Sale →
     </button>
   </div>
 );
@@ -146,6 +150,9 @@ const TransactionHistory = ({ shopInfo, workers, onBackToNew, workerName }) => {
 
   // Action menu
   const [actionMenuId, setActionMenuId] = useState(null);
+
+  // Mobile filter bottom sheet
+  const [showFilterSheet, setShowFilterSheet] = useState(false);
 
   const dateFilter = dateRange === 'custom'
     ? { startDate: customStartDate ? new Date(customStartDate).toISOString() : '', endDate: customEndDate ? new Date(customEndDate + 'T23:59:59.999Z').toISOString() : '' }
@@ -289,8 +296,8 @@ const TransactionHistory = ({ shopInfo, workers, onBackToNew, workerName }) => {
         </button>
       </div>
 
-      {/* Filter Bar */}
-      <div className="space-y-3">
+      {/* Filter Bar — Desktop */}
+      <div className="hidden md:block space-y-3">
         {/* Date range */}
         <div className="flex gap-2 overflow-x-auto scrollbar-none pb-1">
           {DATE_RANGES.map((dr) => (
@@ -360,6 +367,75 @@ const TransactionHistory = ({ shopInfo, workers, onBackToNew, workerName }) => {
             />
           </div>
         </div>
+      </div>
+
+      {/* Filter Bar — Mobile */}
+      <div className="md:hidden space-y-3">
+        {/* Search */}
+        <div className="relative">
+          <Search size={18} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-neutral-400" />
+          <input
+            type="text"
+            value={search}
+            onChange={(e) => { setSearch(e.target.value); setPage(1); }}
+            placeholder="Search receipts..."
+            className="w-full h-11 pl-10 pr-4 bg-white border-[1.5px] border-neutral-300 rounded-[12px] text-sm outline-none focus:border-[#312E81]"
+          />
+        </div>
+
+        {/* Filter + Date buttons row */}
+        <div className="flex gap-2">
+          <button
+            onClick={() => setShowFilterSheet(true)}
+            className="flex-1 flex items-center justify-center gap-2 h-11 bg-white border-[1.5px] border-neutral-300 rounded-[12px] text-sm font-medium text-neutral-700 active:scale-[0.98] transition-transform"
+          >
+            <SlidersHorizontal size={18} />
+            Filters
+          </button>
+          <button
+            onClick={() => setShowFilterSheet(true)}
+            className="flex-1 flex items-center justify-center gap-2 h-11 bg-white border-[1.5px] border-neutral-300 rounded-[12px] text-sm font-medium text-neutral-700 active:scale-[0.98] transition-transform"
+          >
+            <Calendar size={18} />
+            {dateRange === 'all' ? 'All Time' : DATE_RANGES.find((d) => d.key === dateRange)?.label || 'Custom'} ▼
+          </button>
+        </div>
+
+        {/* Active filter chips */}
+        {(paymentFilter !== 'all' || workerFilter !== 'all' || dateRange !== 'all') && (
+          <div className="flex flex-wrap items-center gap-2">
+            {paymentFilter !== 'all' && (
+              <span className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-[#EEF2FF] text-[#312E81] text-[13px] font-medium rounded-full">
+                {PAYMENT_CONFIG[paymentFilter]?.label || paymentFilter}
+                <button onClick={() => setPaymentFilter('all')} className="hover:opacity-70">
+                  <X size={14} />
+                </button>
+              </span>
+            )}
+            {workerFilter !== 'all' && (
+              <span className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-[#EEF2FF] text-[#312E81] text-[13px] font-medium rounded-full">
+                {workers.find((w) => w._id === workerFilter)?.fullName || 'Worker'}
+                <button onClick={() => setWorkerFilter('all')} className="hover:opacity-70">
+                  <X size={14} />
+                </button>
+              </span>
+            )}
+            {dateRange !== 'all' && (
+              <span className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-[#EEF2FF] text-[#312E81] text-[13px] font-medium rounded-full">
+                {DATE_RANGES.find((d) => d.key === dateRange)?.label || 'Custom'}
+                <button onClick={() => setDateRange('all')} className="hover:opacity-70">
+                  <X size={14} />
+                </button>
+              </span>
+            )}
+            <button
+              onClick={() => { setPaymentFilter('all'); setWorkerFilter('all'); setDateRange('all'); setPage(1); }}
+              className="text-[13px] text-neutral-500 hover:text-neutral-700 ml-1"
+            >
+              Clear All
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Loading */}
@@ -500,34 +576,68 @@ const TransactionHistory = ({ shopInfo, workers, onBackToNew, workerName }) => {
               const Icon = pm.icon;
               const workerObj = typeof sale.soldBy === 'object' ? sale.soldBy : workers.find((w) => w._id === sale.soldBy);
               const wName = workerObj?.fullName || '';
-              const itemCount = (sale.items || []).reduce((sum, i) => sum + (i.quantity || 0), 0);
-              const timeStr = sale.createdAt ? new Date(sale.createdAt).toLocaleTimeString('en-KE', { hour: '2-digit', minute: '2-digit' }) : '';
+              const dateStr = sale.createdAt
+                ? new Date(sale.createdAt).toLocaleDateString('en-KE', { weekday: 'short', month: 'short', day: 'numeric' })
+                : '';
+              const timeStr = sale.createdAt
+                ? new Date(sale.createdAt).toLocaleTimeString('en-KE', { hour: '2-digit', minute: '2-digit' })
+                : '';
+              const items = sale.items || [];
+
+              // Payment badge styling
+              const paymentBadgeStyle = sale.paymentMethod === 'cash'
+                ? 'bg-[#D1FAE5] text-[#10B981]'
+                : sale.paymentMethod === 'mpesa'
+                  ? 'bg-[#DBEAFE] text-[#3B82F6]'
+                  : 'bg-[#FEF3C7] text-[#F59E0B]';
 
               return (
                 <div
                   key={sale._id}
                   onClick={() => openReceipt(sale)}
-                  className="bg-white rounded-xl border border-neutral-200 p-4 active:scale-[0.99] transition-transform cursor-pointer"
+                  className="bg-white rounded-[14px] border border-neutral-100 shadow-sm p-4 active:scale-[0.99] transition-transform cursor-pointer"
                 >
-                  <div className="flex justify-between items-start mb-2">
-                    <div>
-                      <span className="text-sm font-mono font-medium text-[#312E81]">{sale.saleNumber}</span>
-                      <span className="text-xs text-[#64748B] ml-2">{timeStr}</span>
-                    </div>
-                    <StatusBadge status={sale.paymentStatus} dueDate={sale.dueDate} />
+                  {/* Top row: Receipt # + Payment badge */}
+                  <div className="flex items-center justify-between mb-3">
+                    <span className="text-sm font-mono font-medium text-[#312E81]">{sale.saleNumber}</span>
+                    <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium ${paymentBadgeStyle}`}>
+                      <Icon size={12} />
+                      {pm.label}
+                    </span>
                   </div>
-                  <div className="flex justify-between items-end">
-                    <div className="space-y-1">
-                      <p className="text-[13px] text-[#64748B]">{itemCount} item{itemCount !== 1 ? 's' : ''}</p>
-                      <div className="flex items-center gap-1.5">
-                        <span className={`w-2 h-2 rounded-full ${pm.dot}`} />
-                        <Icon size={13} className="text-[#64748B]" />
-                        <span className="text-xs text-[#64748B]">{pm.label}</span>
-                        <span className="text-xs text-neutral-300">·</span>
-                        <span className="text-xs text-[#64748B]">{wName}</span>
-                      </div>
+
+                  {/* Items list */}
+                  {items.length > 0 && (
+                    <div className="mb-3">
+                      {items.slice(0, 3).map((item, idx) => {
+                        const productName = typeof item.product === 'object' ? item.product?.name : item.productName || 'Item';
+                        const variant = item.variant || '';
+                        return (
+                          <p key={idx} className="text-[13px] text-neutral-600 truncate">
+                            {productName}{variant ? ` (${variant})` : ''} ×{item.quantity}
+                          </p>
+                        );
+                      })}
+                      {items.length > 3 && (
+                        <p className="text-[12px] text-neutral-400 mt-0.5">+{items.length - 3} more item{items.length - 3 !== 1 ? 's' : ''}</p>
+                      )}
                     </div>
-                    <span className="text-lg font-bold text-[#1E293B]">{formatCurrency(sale.total)}</span>
+                  )}
+
+                  {/* Divider */}
+                  <div className="border-t border-neutral-100 mb-3" />
+
+                  {/* Bottom row: Date/Time + Amount */}
+                  <div className="flex items-end justify-between">
+                    <div className="space-y-0.5">
+                      <p className="text-xs text-neutral-500">
+                        {dateStr}{dateStr && timeStr ? ', ' : ''}{timeStr}
+                      </p>
+                      {wName && (
+                        <p className="text-xs text-neutral-500">👤 {wName}</p>
+                      )}
+                    </div>
+                    <span className="text-base font-bold text-neutral-900">{formatCurrency(sale.total)}</span>
                   </div>
                 </div>
               );
@@ -575,6 +685,146 @@ const TransactionHistory = ({ shopInfo, workers, onBackToNew, workerName }) => {
               </div>
             </div>
           )}
+        </>
+      )}
+
+      {/* ══════════════════════════════════════════
+         FILTER BOTTOM SHEET (Mobile)
+         ══════════════════════════════════════════ */}
+      {showFilterSheet && (
+        <>
+          {/* Backdrop */}
+          <div
+            className="fixed inset-0 bg-black/50 z-50 md:hidden"
+            onClick={() => setShowFilterSheet(false)}
+          />
+
+          {/* Sheet */}
+          <div className="fixed inset-x-0 bottom-0 z-50 md:hidden bg-white rounded-t-[24px] shadow-2xl max-h-[70vh] overflow-y-auto animate-slideUp">
+            {/* Drag handle */}
+            <div className="flex justify-center pt-3 pb-1">
+              <div className="w-9 h-1 rounded-full bg-neutral-300" />
+            </div>
+
+            {/* Header */}
+            <div className="flex items-center justify-between px-5 pb-4">
+              <h3 className="text-lg font-bold text-neutral-900">Filters</h3>
+              <button
+                onClick={() => setShowFilterSheet(false)}
+                className="text-sm font-semibold text-[#312E81]"
+              >
+                Done
+              </button>
+            </div>
+
+            <div className="px-5 pb-8 space-y-6">
+              {/* Date Range */}
+              <div>
+                <p className="text-[15px] font-semibold text-neutral-900 mb-3">Date Range</p>
+                <div className="flex flex-wrap gap-2">
+                  {DATE_RANGES.map((dr) => (
+                    <button
+                      key={dr.key}
+                      onClick={() => { setDateRange(dr.key); setPage(1); }}
+                      className={`px-4 py-2.5 rounded-full text-sm font-medium border-[1.5px] transition-all ${
+                        dateRange === dr.key
+                          ? 'bg-[#312E81] text-white border-[#312E81]'
+                          : 'bg-white text-neutral-700 border-neutral-300'
+                      }`}
+                    >
+                      {dr.label}
+                    </button>
+                  ))}
+                </div>
+                {/* Custom date inputs */}
+                {dateRange === 'custom' && (
+                  <div className="flex items-center gap-2 mt-3">
+                    <input
+                      type="date"
+                      value={customStartDate}
+                      onChange={(e) => { setCustomStartDate(e.target.value); setPage(1); }}
+                      className="flex-1 h-11 px-3 border-[1.5px] border-neutral-300 rounded-[12px] text-sm outline-none focus:border-[#312E81]"
+                    />
+                    <span className="text-sm text-neutral-400">to</span>
+                    <input
+                      type="date"
+                      value={customEndDate}
+                      onChange={(e) => { setCustomEndDate(e.target.value); setPage(1); }}
+                      className="flex-1 h-11 px-3 border-[1.5px] border-neutral-300 rounded-[12px] text-sm outline-none focus:border-[#312E81]"
+                    />
+                  </div>
+                )}
+              </div>
+
+              {/* Payment Method */}
+              <div>
+                <p className="text-[15px] font-semibold text-neutral-900 mb-3">Payment Method</p>
+                <div className="flex flex-wrap gap-2">
+                  {[{ key: 'all', label: 'All' }, ...Object.entries(PAYMENT_CONFIG).map(([k, v]) => ({ key: k, label: v.label }))].map((pm) => (
+                    <button
+                      key={pm.key}
+                      onClick={() => { setPaymentFilter(pm.key); setPage(1); }}
+                      className={`px-4 py-2.5 rounded-full text-sm font-medium border-[1.5px] transition-all ${
+                        paymentFilter === pm.key
+                          ? 'bg-[#312E81] text-white border-[#312E81]'
+                          : 'bg-white text-neutral-700 border-neutral-300'
+                      }`}
+                    >
+                      {pm.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Worker */}
+              <div>
+                <p className="text-[15px] font-semibold text-neutral-900 mb-3">Worker</p>
+                <div className="space-y-0">
+                  <button
+                    onClick={() => { setWorkerFilter('all'); setPage(1); }}
+                    className="w-full flex items-center gap-3 py-3.5 border-b border-neutral-100 text-left"
+                  >
+                    <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 ${
+                      workerFilter === 'all' ? 'border-[#312E81]' : 'border-neutral-300'
+                    }`}>
+                      {workerFilter === 'all' && <div className="w-2.5 h-2.5 rounded-full bg-[#312E81]" />}
+                    </div>
+                    <span className="text-[15px] font-medium text-neutral-900">All Workers</span>
+                  </button>
+                  {workers.map((w) => (
+                    <button
+                      key={w._id}
+                      onClick={() => { setWorkerFilter(w._id); setPage(1); }}
+                      className="w-full flex items-center gap-3 py-3.5 border-b border-neutral-100 text-left"
+                    >
+                      <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 ${
+                        workerFilter === w._id ? 'border-[#312E81]' : 'border-neutral-300'
+                      }`}>
+                        {workerFilter === w._id && <div className="w-2.5 h-2.5 rounded-full bg-[#312E81]" />}
+                      </div>
+                      <span className="text-[15px] font-medium text-neutral-900">{w.fullName}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Apply Button */}
+              <button
+                onClick={() => setShowFilterSheet(false)}
+                className="w-full h-12 bg-[#312E81] text-white rounded-[12px] text-sm font-semibold hover:bg-[#1E1B4B] transition-colors"
+              >
+                Apply Filters
+              </button>
+
+              {/* Clear All */}
+              <button
+                onClick={() => { setPaymentFilter('all'); setWorkerFilter('all'); setDateRange('all'); setPage(1); }}
+                className="w-full h-11 bg-transparent text-neutral-600 text-sm font-medium"
+              >
+                Clear All Filters
+              </button>
+            </div>
+          </div>
         </>
       )}
 
