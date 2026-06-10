@@ -18,8 +18,10 @@ export const useInventorySocket = (shopId) => {
     const socket = io(SOCKET_URL, {
       transports: ['websocket', 'polling'],
       reconnection: true,
-      reconnectionDelay: 1000,
+      reconnectionDelay: 5000,
+      reconnectionDelayMax: 30000,
       reconnectionAttempts: 5,
+      timeout: 10000,
     });
 
     socketRef.current = socket;
@@ -64,7 +66,11 @@ export const useInventorySocket = (shopId) => {
     });
 
     socket.on('connect_error', (error) => {
-      console.error('⚠️ Inventory socket error:', error.message);
+      console.warn('⚠️ Inventory socket unavailable — using HTTP only:', error.message);
+    });
+
+    socket.on('reconnect_failed', () => {
+      console.warn('⚠️ Inventory socket reconnection failed — using HTTP only');
     });
 
     return () => {

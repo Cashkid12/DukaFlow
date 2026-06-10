@@ -32,12 +32,18 @@ const EMPTY_DASHBOARD = {
  */
 const transformChartData = (chartData) => {
   if (!chartData || chartData.length === 0) return [];
-  return chartData.map((item) => ({
-    day: item._id?.day || item.day || '',
-    date: item._id?.date || item.date || '',
-    sales: item.sales || 0,
-    profit: item.profit || 0,
-  }));
+  return chartData.map((item) => {
+    const dateStr = item._id?.date || item.date || '';
+    const dayName = dateStr
+      ? new Date(dateStr + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'short' })
+      : '';
+    return {
+      day: dayName,
+      date: dateStr,
+      sales: item.sales || 0,
+      profit: item.profit || 0,
+    };
+  });
 };
 
 /**

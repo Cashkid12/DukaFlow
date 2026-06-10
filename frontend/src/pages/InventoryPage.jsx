@@ -1,5 +1,6 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useQueryClient } from '@tanstack/react-query';
 import {
   Search, Filter, Grid, List, Package,
   AlertCircle, X, ChevronDown,
@@ -27,6 +28,7 @@ import { productService } from '../services/api';
 const InventoryPage = () => {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
+  const queryClient = useQueryClient();
 
   // --- State ---
   const [searchTerm, setSearchTerm] = useState('');
@@ -195,9 +197,30 @@ const InventoryPage = () => {
     setDeleteLoading(true);
     try {
       await productService.deleteProduct(product._id);
+
+      // Optimistically remove product from cache immediately (instant grid update)
+      queryClient.setQueryData(['inventory'], (old) => {
+        if (!old) return old;
+        const productStatus = product.status || 'in_stock';
+        return {
+          ...old,
+          products: (old.products || []).filter(p => p._id !== product._id),
+          total: Math.max(0, (old.total || 0) - 1),
+          totalAll: Math.max(0, (old.totalAll || 0) - 1),
+          categories: (old.categories || []).map(c =>
+            c.name === product.category ? { ...c, count: Math.max(0, (c.count || 0) - 1) } : c
+          ),
+          stockStatus: {
+            ...old.stockStatus,
+            inStock: productStatus === 'in_stock' ? Math.max(0, (old.stockStatus?.inStock || 0) - 1) : (old.stockStatus?.inStock || 0),
+            lowStock: productStatus === 'low_stock' ? Math.max(0, (old.stockStatus?.lowStock || 0) - 1) : (old.stockStatus?.lowStock || 0),
+            outOfStock: productStatus === 'out_of_stock' ? Math.max(0, (old.stockStatus?.outOfStock || 0) - 1) : (old.stockStatus?.outOfStock || 0),
+          },
+        };
+      });
+
       showToast('Product Deleted', product.name, 'success');
       setDeleteProduct(null);
-      refetch();
     } catch (err) {
       showToast('Failed to delete product', err.message || 'Please try again', 'error');
       setDeleteProduct(null);

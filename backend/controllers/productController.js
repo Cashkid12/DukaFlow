@@ -349,16 +349,15 @@ exports.updateProduct = async (req, res) => {
   }
 };
 
-// @desc    Delete product (soft delete)
+// @desc    Delete product (permanently removes from database)
 // @route   DELETE /api/products/:id
 // @access  Private
 exports.deleteProduct = async (req, res) => {
   try {
-    const product = await Product.findOneAndUpdate(
-      { _id: req.params.id, shop: req.user.shop },
-      { isActive: false },
-      { new: true }
-    );
+    const product = await Product.findOneAndDelete({
+      _id: req.params.id,
+      shop: req.user.shop,
+    });
 
     if (!product) {
       return res.status(404).json({

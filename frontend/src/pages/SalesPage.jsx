@@ -188,9 +188,22 @@ const SalesPage = () => {
 
   useEffect(() => {
     const SOCKET_URL = import.meta.env.VITE_SOCKET_URL || 'http://localhost:5000';
-    const socket = io(SOCKET_URL, { transports: ['websocket', 'polling'], reconnection: true });
+    const socket = io(SOCKET_URL, {
+      transports: ['websocket', 'polling'],
+      reconnection: true,
+      reconnectionDelay: 5000,
+      reconnectionDelayMax: 30000,
+      reconnectionAttempts: 5,
+      timeout: 10000,
+    });
     socket.on('connect', () => {
       if (shopId) socket.emit('join:shop', shopId);
+    });
+    socket.on('connect_error', () => {
+      console.warn('⚠️ Sales socket unavailable — using HTTP only');
+    });
+    socket.on('reconnect_failed', () => {
+      console.warn('⚠️ Sales socket reconnection failed — using HTTP only');
     });
     socket.on('product:created', () => {
       queryClient.invalidateQueries({ queryKey: ['sales', 'products'] });
@@ -389,9 +402,12 @@ const SalesPage = () => {
           </div>
           <div className="flex gap-2 overflow-x-auto scrollbar-none">
             <button onClick={() => setSelectedCategory('all')} className={`px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap border transition-all ${selectedCategory === 'all' ? 'bg-[#312E81] text-white border-[#312E81]' : 'bg-white text-[#64748B] border-[#CBD5E1] hover:border-[#312E81] hover:bg-[#EEF2FF]'}`}>All</button>
-            {categories.map((cat) => (
-              <button key={cat} onClick={() => setSelectedCategory(cat)} className={`px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap border transition-all ${selectedCategory === cat ? 'bg-[#312E81] text-white border-[#312E81]' : 'bg-white text-[#64748B] border-[#CBD5E1] hover:border-[#312E81] hover:bg-[#EEF2FF]'}`}>{cat}</button>
-            ))}
+            {categories.map((cat) => {
+              const catName = typeof cat === 'object' ? cat.name : cat;
+              const catCount = typeof cat === 'object' ? cat.count : undefined;
+              return (
+              <button key={catName} onClick={() => setSelectedCategory(catName)} className={`px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap border transition-all ${selectedCategory === catName ? 'bg-[#312E81] text-white border-[#312E81]' : 'bg-white text-[#64748B] border-[#CBD5E1] hover:border-[#312E81] hover:bg-[#EEF2FF]'}`}>{catName}{catCount != null ? ` (${catCount})` : ''}</button>
+            )})}
           </div>
 
           <div className="grid grid-cols-2 md:grid-cols-3 gap-3">

@@ -186,7 +186,7 @@ exports.getDashboardData = async (req, res) => {
           $group: {
             _id: {
               date: { $dateToString: { format: '%Y-%m-%d', date: '$createdAt' } },
-              day: { $dateToString: { format: '%a', date: '$createdAt' } },
+              day: { $dateToString: { format: '%Y-%m-%d', date: '$createdAt' } },
             },
             sales: { $sum: '$total' },
             profit: { $sum: '$totalProfit' },

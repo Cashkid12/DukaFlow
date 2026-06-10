@@ -30,8 +30,10 @@ export const useSocket = (shopId, callbacks = {}) => {
     const socket = io(SOCKET_URL, {
       transports: ['websocket', 'polling'],
       reconnection: true,
-      reconnectionDelay: 1000,
+      reconnectionDelay: 5000,
+      reconnectionDelayMax: 30000,
       reconnectionAttempts: 5,
+      timeout: 10000,
     });
 
     // Join shop room
@@ -112,7 +114,12 @@ export const useSocket = (shopId, callbacks = {}) => {
     });
 
     socket.on('connect_error', (error) => {
-      console.error('⚠️ Socket connection error:', error);
+      console.warn('⚠️ WebSocket unavailable — using HTTP only:', error.message);
+      // Don't crash — app works fine with regular API calls
+    });
+
+    socket.on('reconnect_failed', () => {
+      console.warn('⚠️ WebSocket reconnection failed — using HTTP only');
     });
 
     // Cleanup on unmount

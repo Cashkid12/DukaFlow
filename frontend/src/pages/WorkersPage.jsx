@@ -620,9 +620,22 @@ const WorkersPage = () => {
   }, [role, navigate]);
 
   useEffect(() => {
-    const socket = io(SOCKET_URL, { transports: ['websocket', 'polling'], reconnection: true });
+    const socket = io(SOCKET_URL, {
+      transports: ['websocket', 'polling'],
+      reconnection: true,
+      reconnectionDelay: 5000,
+      reconnectionDelayMax: 30000,
+      reconnectionAttempts: 5,
+      timeout: 10000,
+    });
     socket.on('connect', () => {
       if (shopId) socket.emit('join:shop', shopId);
+    });
+    socket.on('connect_error', () => {
+      console.warn('⚠️ Workers socket unavailable — using HTTP only');
+    });
+    socket.on('reconnect_failed', () => {
+      console.warn('⚠️ Workers socket reconnection failed — using HTTP only');
     });
     socket.on('worker:invited', () => queryClient.invalidateQueries({ queryKey: ['workers'] }));
     socket.on('worker:accepted', () => queryClient.invalidateQueries({ queryKey: ['workers'] }));
