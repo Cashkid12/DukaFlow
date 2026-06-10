@@ -128,17 +128,31 @@ Frontend: **http://localhost:5173**
 ## Features
 
 ### Dashboard
-- Real-time sales, profit, and transaction stats
-- Low stock alerts and expiry warnings
-- Worker activity overview
-- Auto-refresh every 60s + Socket.IO real-time updates
+- **4 UI states**: Skeleton loading → Empty welcome → Live data → Error with retry
+- Real-time sales & profit stats with trend indicators (↑/↓/—)
+- Role-based data visibility (Admin sees all; Manager sees sales, no profit; Cashier sees own sales only)
+- Low stock alerts with direct navigation to filtered inventory
+- Worker performance cards with progress bars
+- Combo chart: sales bars + profit line (7D / 30D / 3M)
+- Recent transactions with payment icons (Cash/M-Pesa/Card)
+- FAB (Floating Action Button) for quick actions
+- Auto-refresh every 60s + Socket.IO instant updates
+- Graceful WebSocket failure: falls back to HTTP polling
+- 📖 Full docs: [DASHBOARD_LOADING_REALTIME_ACCESSIBILITY.md](./DASHBOARD_LOADING_REALTIME_ACCESSIBILITY.md)
 
 ### Inventory Management
-- Product CRUD with images, categories, custom attributes
-- Stock tracking with low-stock alerts
-- CSV import/export
-- Filters by category, stock status, search
-- Price and stock history per product
+- Product CRUD with **hard delete** (permanent removal) + optimistic UI updates
+- Grid & list view toggle, client-side filtering/sorting/pagination
+- Filter bar: search + category pills + stock status pills + dynamic attribute dropdowns (size/color/brand)
+- Active filter chips with individual dismiss + "Clear All"
+- **Restock flow**: add stock + optional price update, tracks both stock & price history
+- CSV import with business-type-aware templates (Clothing, Pharmacy, Electronics, Grocery, Cosmetics, Hardware)
+- CSV template download per business type (UTF-8 BOM for Excel)
+- Price history tracking (every cost/selling price change)
+- Stock history tracking (every addition, subtraction, restock, adjustment)
+- Role-based actions: Admins & Managers can edit/restock/delete; Cashiers view-only
+- Deep-link from Dashboard (e.g., `/inventory?filter=low-stock`)
+- 📖 Full docs: [INVENTORY_SYSTEM_DOCUMENTATION.md](./INVENTORY_SYSTEM_DOCUMENTATION.md)
 
 ### Sales / POS
 - Fast point-of-sale interface with product search
@@ -188,11 +202,20 @@ Frontend: **http://localhost:5173**
 | `GET` | `/api/auth/me/clerk` | Current user profile (Clerk) |
 | `GET` | `/api/auth/onboarding-status` | Check if user has a shop |
 | `GET` | `/api/dashboard` | Dashboard stats & metrics |
-| `GET` | `/api/products` | List products (with filters) |
+| `GET` | `/api/products` | List products (with filters, categories, stock status) |
+| `GET` | `/api/products/stats` | Inventory statistics (total value, total cost, status counts) |
+| `GET` | `/api/products/filters` | Dynamic filter values (sizes, colors, brands, price range) |
+| `GET` | `/api/products/template` | Download CSV template (per business type) |
 | `POST` | `/api/products` | Create product |
-| `PUT` | `/api/products/:id` | Update product |
-| `DELETE` | `/api/products/:id` | Delete product |
-| `GET` | `/api/products/stats` | Inventory statistics |
+| `POST` | `/api/products/import` | Bulk CSV import with validation |
+| `GET` | `/api/products/:id` | Get single product |
+| `PUT` | `/api/products/:id` | Update product (tracks price history) |
+| `DELETE` | `/api/products/:id` | Hard delete product (permanent removal) |
+| `PATCH` | `/api/products/:id/stock` | Manual stock adjustment |
+| `POST` | `/api/products/:id/restock` | Restock + optional price update |
+| `GET` | `/api/products/:id/price-history` | Price history (last 50 changes) |
+| `GET` | `/api/products/:id/stock-history` | Stock history (last 50 changes) |
+| `POST` | `/api/products/:id/image` | Upload product image URL |
 | `POST` | `/api/sales` | Record a sale |
 | `GET` | `/api/sales` | List sales/transactions |
 | `GET` | `/api/workers` | List workers with performance stats |
@@ -219,7 +242,7 @@ Clients join a shop-specific room (`join:shop <shopId>`) and receive scoped even
 |-------|---------|----------------|
 | `product:created` | New product added | Inventory, Sales, Dashboard |
 | `product:updated` | Product modified | Inventory, Sales, Dashboard |
-| `product:deleted` | Product removed | Inventory, Sales, Dashboard |
+| `product:deleted` | Product removed (hard delete) | Inventory, Sales, Dashboard |
 | `stock:updated` | Stock level changed | Inventory, Sales, Dashboard |
 | `sale:completed` | Sale recorded | Sales, Inventory, Dashboard, Workers |
 | `worker:invited` | Worker invited | Workers |
@@ -228,7 +251,11 @@ Clients join a shop-specific room (`join:shop <shopId>`) and receive scoped even
 | `worker:role-changed` | Worker role updated | Workers, WorkerDetail |
 | `worker:session-terminated` | Sessions force-logged out | WorkerDetail |
 | `worker:removed` | Worker removed | WorkerDetail |
-| `dashboard:update` | Stats changed | Dashboard |
+| `alert:new` | New notification created | Dashboard |
+| `worker:login` | Worker came online | Dashboard, Workers |
+| `worker:logout` | Worker went offline | Dashboard, Workers |
+
+**Socket config**: WebSocket + polling transport, 5s reconnect delay (max 30s), 5 attempts, 10s timeout. On failure → `console.warn`, app continues via HTTP polling.
 
 ---
 
@@ -317,6 +344,13 @@ npx vercel --prod
 | `VITE_API_URL` | Backend API base URL | Yes |
 | `VITE_SOCKET_URL` | Socket.IO server URL | Yes |
 | `VITE_CLERK_PUBLISHABLE_KEY` | Clerk publishable key | Yes |
+
+---
+
+## 📖 Detailed Documentation
+
+- [Dashboard System Documentation](./DASHBOARD_LOADING_REALTIME_ACCESSIBILITY.md) — Architecture, states, API contract, real-time updates, role-based visibility
+- [Inventory System Documentation](./INVENTORY_SYSTEM_DOCUMENTATION.md) — Data flow, filters, CRUD flows, CSV import/export, component reference, API routes
 
 ---
 
