@@ -148,24 +148,39 @@ const WorkerCard = ({ worker, onView, onEdit, onResend, onCancel, isResending })
       : { label: `○ Last seen ${worker.lastLogin ? new Date(worker.lastLogin).toLocaleTimeString('en-KE', { hour: '2-digit', minute: '2-digit' }) : '—'}`, color: 'text-[#64748B]' };
 
   const [invitedLabel, setInvitedLabel] = useState(null);
+  const [expiryLabel, setExpiryLabel] = useState(null);
 
   useEffect(() => {
-    if (!worker.invitedAt) return;
+    if (!worker.invitationSentAt && !worker.invitedAt) return;
+    const sentAt = worker.invitationSentAt || worker.invitedAt;
+    const expiresAt = worker.invitationExpiresAt;
+
     const update = () => {
-      const ms = Date.now() - new Date(worker.invitedAt).getTime();
-      const days = Math.floor(ms / (1000 * 60 * 60 * 24));
-      const hours = Math.floor(ms / (1000 * 60 * 60));
+      // Sent label
+      const msAgo = Date.now() - new Date(sentAt).getTime();
+      const daysAgo = Math.floor(msAgo / (1000 * 60 * 60 * 24));
+      const hoursAgo = Math.floor(msAgo / (1000 * 60 * 60));
       setInvitedLabel(
-        days === 0
-          ? hours === 0 ? 'just now' : `${hours} hour${hours > 1 ? 's' : ''} ago`
-          : `${days} day${days > 1 ? 's' : ''} ago`
+        daysAgo === 0
+          ? hoursAgo === 0 ? 'just now' : `${hoursAgo} hour${hoursAgo > 1 ? 's' : ''} ago`
+          : `${daysAgo} day${daysAgo > 1 ? 's' : ''} ago`
       );
+
+      // Expiry label
+      if (expiresAt) {
+        const msRemaining = new Date(expiresAt).getTime() - Date.now();
+        if (msRemaining <= 0) {
+          setExpiryLabel('Expired');
+        } else {
+          const daysRemaining = Math.ceil(msRemaining / (1000 * 60 * 60 * 24));
+          setExpiryLabel(`Expires in ${daysRemaining} day${daysRemaining !== 1 ? 's' : ''}`);
+        }
+      }
     };
     update();
-    // Refresh every minute so "just now" updates
     const interval = setInterval(update, 60000);
     return () => clearInterval(interval);
-  }, [worker.invitedAt]);
+  }, [worker.invitationSentAt, worker.invitationExpiresAt, worker.invitedAt]);
 
   return (
     <div
@@ -196,9 +211,16 @@ const WorkerCard = ({ worker, onView, onEdit, onResend, onCancel, isResending })
           <p className="text-[13px] text-[#64748B] mt-1 truncate">{worker.email}</p>
           <p className={`text-xs mt-0.5 ${statusDisplay.color}`}>{statusDisplay.label}</p>
           {isPending && invitedLabel !== null && (
-            <p className="text-xs text-[#64748B] mt-0.5">
-              Sent {invitedLabel}
-            </p>
+            <>
+              <p className="text-xs text-[#64748B] mt-0.5">
+                Sent {invitedLabel}
+              </p>
+              {expiryLabel && (
+                <p className={`text-xs mt-0.5 ${expiryLabel === 'Expired' ? 'text-[#EF4444] font-medium' : 'text-[#64748B]'}`}>
+                  {expiryLabel}
+                </p>
+              )}
+            </>
           )}
         </div>
       </div>
@@ -467,6 +489,25 @@ const InviteSuccessModal = ({ show, worker, onInviteAnother, onDone }) => {
 
   const roleLabel = ROLE_CONFIG[worker.role]?.label || 'Worker';
 
+  // Compute dynamic expiry
+  const computeExpiry = () => {
+    if (worker.invitationExpiresAt) {
+      const ms = new Date(worker.invitationExpiresAt).getTime() - Date.now();
+      if (ms <= 0) return 'This invitation has expired';
+      const days = Math.ceil(ms / (1000 * 60 * 60 * 24));
+      return `This invitation expires in ${days} day${days !== 1 ? 's' : ''}.`;
+    }
+    if (worker.invitationSentAt) {
+      const sent = new Date(worker.invitationSentAt);
+      const expires = new Date(sent.getTime() + 7 * 24 * 60 * 60 * 1000);
+      const ms = expires.getTime() - Date.now();
+      if (ms <= 0) return 'This invitation has expired';
+      const days = Math.ceil(ms / (1000 * 60 * 60 * 24));
+      return `This invitation expires in ${days} day${days !== 1 ? 's' : ''}.`;
+    }
+    return 'This invitation expires in 7 days.';
+  };
+
   return (
     <>
       <div className="fixed inset-0 bg-black/50 z-50" onClick={onDone} />
@@ -506,7 +547,7 @@ const InviteSuccessModal = ({ show, worker, onInviteAnother, onDone }) => {
             </ol>
             <div className="mt-4 pt-3 border-t border-[#E2E8F0]">
               <p className="text-xs text-[#64748B]">
-                ⓘ This invitation expires in 7 days. You can resend it anytime.
+                ⓘ {computeExpiry()} You can resend it anytime.
               </p>
             </div>
           </div>
@@ -677,11 +718,31 @@ const WorkersPage = () => {
       const token = await getToken();
       const res = await fetch(`${API_BASE_URL}/workers/${worker._id}/resend-invite`, {
         method: 'POST',
-        headers: { Authorization: `Bearer ${token}` },
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
       });
       if (res.ok) {
+        const result = await res.json();
+        const updated = result.data;
+
+        // Optimistically update the workers cache immediately
+        queryClient.setQueryData(['workers', search], (old) => {
+          if (!old) return old;
+          return old.map((w) =>
+            w._id === worker._id
+              ? {
+                  ...w,
+                  invitationSentAt: updated.invitationSentAt,
+                  invitationExpiresAt: updated.invitationExpiresAt,
+                  invitedAt: updated.invitedAt,
+                }
+              : w
+          );
+        });
+
+        // Also invalidate to ensure full consistency with server
         queryClient.invalidateQueries({ queryKey: ['workers'] });
-        setToast({ message: `Invitation resent to ${worker.email}`, type: 'success' });
+
+        setToast({ message: result.message || `Invitation resent to ${worker.email}`, type: 'success' });
         setTimeout(() => setToast(null), 3500);
       } else {
         const err = await res.json().catch(() => ({}));
@@ -698,7 +759,7 @@ const WorkersPage = () => {
         return next;
       });
     }
-  }, [getToken, queryClient]);
+  }, [getToken, queryClient, search]);
 
   // Cancel invitation (with confirmation)
   const confirmCancel = useCallback((worker) => {

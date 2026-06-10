@@ -609,7 +609,7 @@ const DashboardOverview = () => {
             <button
               onClick={() => { setFabOpen(false); navigate('/dashboard/sales'); }}
               className="flex items-center gap-3 bg-white px-4 py-3 rounded-xl shadow-lg border border-neutral-200 hover:bg-neutral-50 transition-all duration-200 whitespace-nowrap"
-            >
+            > 
               <ShoppingCart size={18} style={{ color: '#10B981' }} />
               <span className="text-sm font-medium text-neutral-900">Quick Sale</span>
             </button>

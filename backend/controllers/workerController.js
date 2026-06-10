@@ -107,7 +107,7 @@ exports.getWorkers = async (req, res) => {
     }
 
     const workers = await User.find(query)
-      .select('fullName email phone role avatar status invitedAt lastLogin createdAt')
+      .select('fullName email phone role avatar status invitedAt invitationSentAt invitationExpiresAt lastLogin createdAt')
       .sort({ fullName: 1 })
       .lean();
 
@@ -574,6 +574,7 @@ exports.inviteWorker = async (req, res) => {
         role: worker.role,
         status: worker.status,
         invitationSentAt: worker.invitationSentAt,
+        invitationExpiresAt: worker.invitationExpiresAt,
       },
     });
   } catch (error) {
@@ -745,7 +746,20 @@ exports.resendInvite = async (req, res) => {
       });
     }
 
-    res.status(200).json({ success: true, message: 'Invitation resent successfully' });
+    res.status(200).json({
+      success: true,
+      message: `Invitation resent to ${worker.email}`,
+      data: {
+        _id: worker._id,
+        fullName: worker.fullName,
+        email: worker.email,
+        role: worker.role,
+        status: worker.status,
+        invitationSentAt: worker.invitationSentAt,
+        invitationExpiresAt: worker.invitationExpiresAt,
+        invitedAt: worker.invitedAt,
+      },
+    });
   } catch (error) {
     console.error('Resend invite error:', error);
     res.status(500).json({ success: false, message: 'Failed to resend invitation' });
