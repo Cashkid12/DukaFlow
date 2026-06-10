@@ -4,7 +4,7 @@ import {
   TrendingUp, DollarSign, AlertTriangle, Users,
   ArrowUpRight, ArrowDownRight, Plus, X,
   Package, UserPlus, Store, Minus, BarChart3,
-  ShoppingCart, CheckCircle, Banknote, Smartphone, CreditCard, AlertCircle,
+  ShoppingCart, CheckCircle, Banknote, Smartphone, CreditCard,
 } from 'lucide-react';
 import { useUser } from '@clerk/clerk-react';
 import { BarChart, ComposedChart, Bar, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
@@ -14,11 +14,11 @@ import { DashboardSkeleton } from '../components/Skeleton';
 import { formatCurrency } from '../utils/formatters';
 import { useCurrentUser } from '../hooks/useCurrentUser';
 import { canViewProfit, canViewWorkers, ROLES } from '../utils/permissions';
+import ErrorState from '../components/common/ErrorState';
 
 const DashboardOverview = () => {
   const navigate = useNavigate();
   const [fabOpen, setFabOpen] = useState(false);
-  const [bannerDismissed, setBannerDismissed] = useState(false);
   const { data, isLoading, isError, invalidate, refetch } = useDashboardQuery();
   const { user } = useUser();
   const { data: currentUser } = useCurrentUser();
@@ -42,16 +42,6 @@ const DashboardOverview = () => {
     onProductDeleted: () => { invalidate(); },
   }), [invalidate]);
   useSocket(shopId, socketCallbacks);
-
-  // ── Detect first-time users (just completed onboarding) ──────
-  const isFirstTime = useMemo(() => {
-    try {
-      const step2 = localStorage.getItem('onboarding_step2');
-      return !!step2;
-    } catch {
-      return false;
-    }
-  }, []);
 
   // ── Chart time range ────────────────────────────────────────
   const [chartRange, setChartRange] = useState('7D');
@@ -80,29 +70,16 @@ const DashboardOverview = () => {
   // ── Error: network failure ──────────────────────────────────
   if (isError) {
     return (
-      <div className="flex items-center justify-center min-h-[600px] animate-fade-in">
-        <div className="text-center max-w-md px-4">
-          <AlertCircle size={48} className="mx-auto mb-4 text-neutral-300" />
-          <p className="text-lg font-semibold text-neutral-900 mb-1">
-            Unable to load dashboard data
-          </p>
-          <p className="text-sm text-neutral-500 mb-6">
-            Please check your connection and try again
-          </p>
-          <button
-            onClick={() => refetch()}
-            className="px-6 py-2.5 bg-[#312E81] text-white font-medium rounded-xl hover:bg-[#1E1B4B] transition-colors text-sm"
-          >
-            Try Again
-          </button>
-        </div>
-      </div>
+      <ErrorState
+        title="Unable to load dashboard data"
+        message="Please check your connection and try again"
+        onRetry={() => refetch()}
+      />
     );
   }
 
   const {
     hasData,
-    shopName,
     todaySales,
     todaySalesTrend,
     todayProfit,
@@ -130,97 +107,84 @@ const DashboardOverview = () => {
     );
   };
 
-  // ── Inline setup actions — shown when shop has no products yet ──
-  const setupCards = !hasData ? (
-    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-      {/* Add Product Card */}
-      <div
-        className="bg-white rounded-2xl border border-neutral-200 p-7 cursor-pointer hover:border-[#312E81] hover:shadow-md transition-all duration-200 hover:-translate-y-0.5 group"
-        onClick={() => navigate('/dashboard/inventory/add')}
-      >
-        <div className="w-14 h-14 rounded-xl bg-[#EEF2FF] flex items-center justify-center mb-4">
-          <Package size={32} style={{ color: '#312E81' }} />
+  // ── Empty State: no products yet ─────────────────────────────
+  if (!hasData) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[600px] px-4 py-12 animate-fade-in">
+        {/* Icon Circle */}
+        <div className="w-24 h-24 sm:w-[120px] sm:h-[120px] rounded-full bg-[#EEF2FF] flex items-center justify-center mb-6 mx-auto">
+          <Package size={56} className="sm:hidden" style={{ color: '#312E81' }} />
+          <Package size={72} className="hidden sm:block" style={{ color: '#312E81' }} />
         </div>
-        <h4 className="text-lg font-semibold text-neutral-900 mb-2">
-          Add Your First Product
-        </h4>
-        <p className="text-sm text-neutral-500 mb-5">
-          Start tracking inventory and get insights on your bestsellers.
-        </p>
-        <button className="flex items-center justify-center gap-2 w-full px-5 py-3 bg-[#312E81] hover:bg-[#1E1B4B] text-white font-semibold rounded-xl transition-all text-sm">
-          <Plus size={18} />
-          Add Product
-          <ArrowUpRight size={16} className="opacity-0 group-hover:opacity-100 transition-opacity" />
-        </button>
-      </div>
 
-      {/* Invite Workers Card */}
-      {role === ROLES.ADMIN && (
-      <div
-        className="bg-white rounded-2xl border border-neutral-200 p-7 cursor-pointer hover:border-[#312E81] hover:shadow-md transition-all duration-200 hover:-translate-y-0.5 group"
-        onClick={() => navigate('/dashboard/workers')}
-      >
-        <div className="w-14 h-14 rounded-xl bg-purple-50 flex items-center justify-center mb-4">
-          <Users size={32} style={{ color: '#8B5CF6' }} />
-        </div>
-        <h4 className="text-lg font-semibold text-neutral-900 mb-2">
-          Invite Your Workers
-        </h4>
-        <p className="text-sm text-neutral-500 mb-5">
-          Add your staff to help manage the duka.
+        {/* Welcome Text */}
+        <h2 className="text-[22px] sm:text-[28px] font-bold text-[#1E293B] mb-3 text-center">
+          Welcome to Your Dashboard{firstName ? `, ${firstName}` : ''}!
+        </h2>
+        <p className="text-sm sm:text-base text-[#64748B] mb-8 text-center max-w-[280px] sm:max-w-[480px]">
+          Your shop is set up and ready to go. Add your first product to start tracking inventory and sales.
         </p>
-        <button className="flex items-center justify-center gap-2 w-full px-5 py-3 bg-white border-[1.5px] border-neutral-300 text-neutral-700 font-semibold rounded-xl hover:bg-neutral-50 hover:border-[#312E81] transition-all text-sm">
-          <UserPlus size={18} />
-          Invite Workers
-          <ArrowUpRight size={16} className="opacity-0 group-hover:opacity-100 transition-opacity" />
-        </button>
+
+        {/* Action Cards */}
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-start gap-4 justify-center mb-5 w-full sm:w-auto px-0 sm:px-0">
+          {/* Add Product Card */}
+          <div
+            onClick={() => navigate('/dashboard/inventory/add')}
+            className="bg-white rounded-2xl border border-[#E2E8F0] p-5 sm:p-6 w-full sm:w-[280px] cursor-pointer hover:shadow-md hover:border-[#312E81] hover:-translate-y-0.5 transition-all duration-200 group"
+          >
+            <div className="w-12 h-12 rounded-xl bg-[#EEF2FF] flex items-center justify-center mb-4">
+              <Package size={28} style={{ color: '#312E81' }} />
+            </div>
+            <h4 className="text-base font-semibold text-[#1E293B] mb-2">
+              Add Your First Product
+            </h4>
+            <p className="text-sm text-[#64748B] mb-4 max-w-[220px]">
+              Start tracking inventory, sales, and profits in minutes.
+            </p>
+            <button
+              onClick={(e) => { e.stopPropagation(); navigate('/dashboard/inventory/add'); }}
+              className="w-full h-12 bg-[#312E81] hover:bg-[#1E1B4B] text-white font-semibold rounded-xl transition-colors text-sm flex items-center justify-center gap-2"
+            >
+              <Plus size={18} /> Add Product &rarr;
+            </button>
+          </div>
+
+          {/* Invite Workers Card (Admin only) */}
+          {role === ROLES.ADMIN && (
+            <div
+              onClick={() => navigate('/dashboard/workers')}
+              className="bg-white rounded-2xl border border-[#E2E8F0] p-5 sm:p-6 w-full sm:w-[280px] cursor-pointer hover:shadow-md hover:border-[#312E81] hover:-translate-y-0.5 transition-all duration-200 group"
+            >
+              <div className="w-12 h-12 rounded-xl bg-purple-50 flex items-center justify-center mb-4">
+                <Users size={28} style={{ color: '#8B5CF6' }} />
+              </div>
+              <h4 className="text-base font-semibold text-[#1E293B] mb-2">
+                Invite Workers
+              </h4>
+              <p className="text-sm text-[#64748B] mb-4 max-w-[220px]">
+                Add your staff to help manage the duka and record sales.
+              </p>
+              <button
+                onClick={(e) => { e.stopPropagation(); navigate('/dashboard/workers'); }}
+                className="w-full h-12 bg-white border-2 border-[#312E81] text-[#312E81] font-semibold rounded-xl hover:bg-[#EEF2FF] transition-colors text-sm flex items-center justify-center gap-2"
+              >
+                <UserPlus size={18} /> Invite Workers &rarr;
+              </button>
+            </div>
+          )}
+        </div>
+
+        {/* Help Link */}
+        <a href="#" className="text-sm text-[#312E81] hover:underline font-medium text-center">
+          Need help? View our quick start guide &rarr;
+        </a>
       </div>
-      )}
-    </div>
-  ) : null;
+    );
+  }
 
   // ── Data state — full dashboard ──────────────────────────────
   return (
     <div className="space-y-6 animate-fade-in">
-      {/* First-time Welcome Banner (dismissible) */}
-      {isFirstTime && !bannerDismissed && (
-        <div className="bg-gradient-to-r from-[#312E81] to-[#6366F1] rounded-2xl p-6 sm:p-8 text-white relative">
-          <button
-            onClick={() => {
-              localStorage.removeItem('onboarding_step2');
-              setBannerDismissed(true);
-            }}
-            className="absolute top-4 right-4 w-8 h-8 rounded-lg bg-white/10 hover:bg-white/20 flex items-center justify-center transition-colors"
-            aria-label="Dismiss welcome banner"
-          >
-            <X size={16} />
-          </button>
-          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
-            <div className="w-14 h-14 rounded-xl bg-white/20 flex items-center justify-center flex-shrink-0">
-              <Store size={28} className="text-white" />
-            </div>
-            <div className="flex-1">
-              <h2 className="text-xl sm:text-2xl font-bold mb-1">
-                Welcome, {firstName || 'there'}!
-              </h2>
-              <p className="text-white/80 text-sm sm:text-base">
-                {shopName} is live. Keep adding products and recording sales!
-              </p>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Setup Actions — show inline when shop has no products */}
-      {setupCards && (
-        <div className="space-y-4">
-          <p className="text-[15px] font-semibold text-neutral-700 text-center sm:text-left">
-            Your shop is all set up. Start by adding products to your inventory.
-          </p>
-          {setupCards}
-        </div>
-      )}
-
       {/* Page Header */}
       <div>
         <h1 className="text-2xl font-bold text-neutral-900">Dashboard Overview</h1>

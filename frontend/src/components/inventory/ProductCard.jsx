@@ -5,30 +5,13 @@ import {
   MoreVertical, Pencil, PackagePlus, Trash2, Copy, Eye,
 } from 'lucide-react';
 import { formatCurrency } from '../../utils/formatters';
+import { getStockBadge } from '../../utils/stockBadge';
 
-const getStockBadge = (status) => {
-  switch (status) {
-    case 'in_stock':
-      return {
-        label: 'In Stock', icon: CheckCircle,
-        bg: 'bg-[#D1FAE5]', text: 'text-[#10B981]', dot: 'bg-[#10B981]',
-      };
-    case 'low_stock':
-      return {
-        label: 'Low Stock', icon: AlertTriangle,
-        bg: 'bg-[#FEF3C7]', text: 'text-[#F59E0B]', dot: 'bg-[#F59E0B]',
-      };
-    case 'out_of_stock':
-      return {
-        label: 'Out of Stock', icon: XCircle,
-        bg: 'bg-[#FEE2E2]', text: 'text-[#EF4444]', dot: 'bg-[#EF4444]',
-      };
-    default:
-      return {
-        label: 'In Stock', icon: CheckCircle,
-        bg: 'bg-[#D1FAE5]', text: 'text-[#10B981]', dot: 'bg-[#10B981]',
-      };
-  }
+// Icon mapping per stock status (keep locally since util shouldn't import lucide)
+const STOCK_ICONS = {
+  in_stock: CheckCircle,
+  low_stock: AlertTriangle,
+  out_of_stock: XCircle,
 };
 
 const getStockBarColor = (product) => {
@@ -50,7 +33,7 @@ const ProductCard = ({
   const threshold = product.lowStockThreshold ?? 10;
   const stockPercent = Math.min(100, Math.max(0, (stock / (threshold * 2)) * 100));
   const stockBarColor = getStockBarColor(product);
-  const BadgeIcon = badge.icon;
+  const BadgeIcon = STOCK_ICONS[product.status] || CheckCircle;
 
   const attrs = [];
   if (product.attributes?.color) attrs.push(product.attributes.color);
@@ -114,6 +97,10 @@ const ProductCard = ({
               <button onClick={() => handleMenuAction('edit')} className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-sm text-neutral-700 hover:bg-neutral-50 transition-colors">
                 <Pencil size={16} />
                 Edit
+              </button>
+              <button onClick={() => handleMenuAction('restock')} className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-sm text-neutral-700 hover:bg-neutral-50 transition-colors">
+                <PackagePlus size={16} />
+                Restock
               </button>
               <button onClick={() => handleMenuAction('duplicate')} className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-sm text-neutral-700 hover:bg-neutral-50 transition-colors">
                 <Copy size={16} />

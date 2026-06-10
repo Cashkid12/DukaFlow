@@ -102,8 +102,11 @@ export const productService = {
   },
 
   // Restock product
-  restockProduct: async (id, quantity) => {
-    const response = await api.post(`/products/${id}/restock`, { quantity });
+  restockProduct: async (id, { quantity, newCostPrice, newSellingPrice }) => {
+    const body = { quantity };
+    if (newCostPrice != null) body.newCostPrice = newCostPrice;
+    if (newSellingPrice != null) body.newSellingPrice = newSellingPrice;
+    const response = await api.post(`/products/${id}/restock`, body);
     return response.data;
   },
 

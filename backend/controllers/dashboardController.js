@@ -296,9 +296,9 @@ exports.getDashboardData = async (req, res) => {
       })
     );
 
-    // Compute hasData: true if shop has any products or sales
-    const totalProducts = await Product.countDocuments({ shop: shopId });
-    const hasData = todaySales > 0 || totalProducts > 0 || activeWorkersCount > 0;
+    // Compute hasData: true only if shop has active (non-deleted) products
+    const totalProducts = await Product.countDocuments({ shop: shopId, isActive: true });
+    const hasData = totalProducts > 0;
 
     res.status(200).json({
       success: true,

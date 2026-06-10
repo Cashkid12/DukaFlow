@@ -3,39 +3,26 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import {
   Search, Filter, Grid, List, Package,
   AlertCircle, X, ChevronDown,
-  Loader2, Plus,
+  Loader2, Plus, CheckCircle,
 } from 'lucide-react';
 import { useInventoryQuery } from '../hooks/useInventoryQuery';
 import { useInventorySocket } from '../hooks/useInventorySocket';
-import { useFiltersQuery } from '../hooks/useFiltersQuery';
 import { useDebounce } from '../hooks/useDebounce';
 import { formatCurrency } from '../utils/formatters';
+import { getStockBadge } from '../utils/stockBadge';
 import ProductCard from '../components/inventory/ProductCard';
-import { useCategoriesQuery } from '../hooks/useCategoriesQuery';
 import CategoryPills from '../components/inventory/CategoryPills';
 import RestockModal from '../components/inventory/RestockModal';
 import DeleteConfirmModal from '../components/inventory/DeleteConfirmModal';
 import AddProductDropdown from '../components/inventory/AddProductDropdown';
+import AddProductFAB from '../components/inventory/AddProductFAB';
+import InventoryFilterBar from '../components/inventory/InventoryFilterBar';
 import BarcodeComingSoonModal from '../components/inventory/BarcodeComingSoonModal';
 import CsvUploadModal from '../components/inventory/CsvUploadModal';
+import ErrorState from '../components/common/ErrorState';
 import { useCurrentUser } from '../hooks/useCurrentUser';
 import { canAddProduct, canEditProduct, canDeleteProduct, ROLES } from '../utils/permissions';
-
-/**
- * Returns a stock status badge config for a product.
- */
-const getStockBadge = (status) => {
-  switch (status) {
-    case 'in_stock':
-      return { label: 'In Stock', bg: 'bg-green-50', text: 'text-green-700', dot: 'bg-green-500' };
-    case 'low_stock':
-      return { label: 'Low Stock', bg: 'bg-orange-50', text: 'text-orange-700', dot: 'bg-orange-500' };
-    case 'out_of_stock':
-      return { label: 'Out of Stock', bg: 'bg-red-50', text: 'text-red-700', dot: 'bg-red-500' };
-    default:
-      return { label: 'In Stock', bg: 'bg-green-50', text: 'text-green-700', dot: 'bg-green-500' };
-  }
-};
+import { productService } from '../services/api';
 
 const InventoryPage = () => {
   const navigate = useNavigate();
@@ -56,6 +43,9 @@ const InventoryPage = () => {
   const [attrFilters, setAttrFilters] = useState({ size: '', color: '', brand: '' });
   const [showBarcodeModal, setShowBarcodeModal] = useState(false);
   const [showCsvModal, setShowCsvModal] = useState(false);
+  const [deleteLoading, setDeleteLoading] = useState(false);
+  const [restockLoading, setRestockLoading] = useState(false);
+  const [toast, setToast] = useState(null);
   const loadMoreRef = useRef(null);
 
   // --- Read URL filter param (e.g., ?filter=low_stock from Dashboard) ---
@@ -78,37 +68,95 @@ const InventoryPage = () => {
     }
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // --- Data ---
-  const filters = useMemo(() => ({
-    search: debouncedSearch,
-    category: selectedCategory,
-    stockStatus: selectedStockStatus,
-    sortBy,
-    sortOrder,
-    page,
-    ...attrFilters,
-  }), [debouncedSearch, selectedCategory, selectedStockStatus, sortBy, sortOrder, page, attrFilters]);
-
-  const { data, isLoading, isError, error, refetch } = useInventoryQuery(filters);
+  // --- Data: ONE API call returns everything ---
+  const { data, isLoading, isError, error, refetch } = useInventoryQuery();
 
   // Socket.io real-time updates
   useInventorySocket(data?.shopId);
 
-  // Dynamic filters from backend
-  const { data: filtersData } = useFiltersQuery();
+  // ── Client-side filtering ──────────────────────────────────
+  const filteredProducts = useMemo(() => {
+    let result = data?.products || [];
 
-  // Shop categories from settings (matches business type from onboarding)
-  const { data: categoriesData } = useCategoriesQuery();
-  const shopCategories = categoriesData?.categories || [];
+    // Filter by category
+    if (selectedCategory !== 'all') {
+      result = result.filter(p => p.category === selectedCategory);
+    }
 
-  const products = data?.products || [];
+    // Filter by stock status
+    if (selectedStockStatus !== 'all') {
+      result = result.filter(p => p.status === selectedStockStatus);
+    }
+
+    // Filter by search
+    if (debouncedSearch) {
+      const term = debouncedSearch.toLowerCase();
+      result = result.filter(p =>
+        (p.name || '').toLowerCase().includes(term) ||
+        (p.sku || '').toLowerCase().includes(term) ||
+        (p.description || '').toLowerCase().includes(term)
+      );
+    }
+
+    // Attribute filters (size, color, brand)
+    if (attrFilters.size) {
+      result = result.filter(p => p.attributes?.size === attrFilters.size);
+    }
+    if (attrFilters.color) {
+      result = result.filter(p => p.attributes?.color === attrFilters.color);
+    }
+    if (attrFilters.brand) {
+      result = result.filter(p => p.attributes?.brand === attrFilters.brand);
+    }
+
+    return result;
+  }, [data?.products, selectedCategory, selectedStockStatus, debouncedSearch, attrFilters]);
+
+  // ── Client-side sorting ────────────────────────────────────
+  const sortedProducts = useMemo(() => {
+    const result = [...filteredProducts];
+
+    switch (sortBy) {
+      case 'name':
+        result.sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+        break;
+      case 'price':
+        result.sort((a, b) => (a.price || a.sellingPrice || 0) - (b.price || b.sellingPrice || 0));
+        break;
+      case 'stock':
+        result.sort((a, b) => (a.stock || a.quantity || 0) - (b.stock || b.quantity || 0));
+        break;
+      case 'createdAt':
+      default:
+        result.sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+        break;
+    }
+
+    if (sortOrder === 'desc') result.reverse();
+    return result;
+  }, [filteredProducts, sortBy, sortOrder]);
+
+  // ── Client-side pagination ─────────────────────────────────
+  const ITEMS_PER_PAGE = 20;
+  const totalFiltered = sortedProducts.length;
+  const totalPages = Math.ceil(totalFiltered / ITEMS_PER_PAGE) || 1;
+  const hasMore = page < totalPages;
+  const paginatedProducts = sortedProducts.slice(0, page * ITEMS_PER_PAGE);
+
+  // Derived data for display
+  const totalAll = data?.totalAll || 0;
   const hasData = data?.hasData || false;
-  const totalPages = data?.totalPages || 1;
-  const hasMore = data?.hasMore ?? false;
-  const total = data?.total || 0;
+  const shopCategories = data?.categories || [];
 
-  // Dynamic attributes from filters endpoint
-  const dynamicAttributes = filtersData?.attributes || {};
+  // Dynamic attributes from filters in the main API response
+  const dynamicAttributes = useMemo(() => {
+    const f = data?.filters || {};
+    const result = {};
+    if (f.sizes?.length) result.size = f.sizes;
+    if (f.colors?.length) result.color = f.colors;
+    if (f.brands?.length) result.brand = f.brands;
+    return result;
+  }, [data?.filters]);
 
   // Role-based permissions
   const { data: currentUser } = useCurrentUser();
@@ -134,6 +182,51 @@ const InventoryPage = () => {
     setSortOrder('desc');
     setAttrFilters({ size: '', color: '', brand: '' });
     setPage(1);
+  };
+
+  // ── Toast helper ──────────────────────────────────────────
+  const showToast = (message, productName, type = 'success', extra = {}) => {
+    setToast({ message, productName, type, ...extra });
+    setTimeout(() => setToast(null), 3000);
+  };
+
+  // ── Delete handler ───────────────────────────────────────
+  const handleDeleteConfirm = async (product) => {
+    setDeleteLoading(true);
+    try {
+      await productService.deleteProduct(product._id);
+      showToast('Product Deleted', product.name, 'success');
+      setDeleteProduct(null);
+      refetch();
+    } catch (err) {
+      showToast('Failed to delete product', err.message || 'Please try again', 'error');
+      setDeleteProduct(null);
+    } finally {
+      setDeleteLoading(false);
+    }
+  };
+
+  // ── Restock handler ──────────────────────────────────────
+  const handleRestockConfirm = async (data) => {
+    setRestockLoading(true);
+    try {
+      const result = await productService.restockProduct(data.productId, {
+        quantity: data.quantity,
+        newCostPrice: data.newCostPrice,
+        newSellingPrice: data.newSellingPrice,
+      });
+      const productName = restockProduct?.name || 'Product';
+      const quantityAdded = result?.data?.quantityAdded || data.quantity;
+      const newStock = result?.data?.newStock ?? (restockProduct?.stock || 0) + data.quantity;
+      showToast('Stock Updated', null, 'restock', { quantity: quantityAdded, productName, newStock });
+      setRestockProduct(null);
+      refetch();
+    } catch (err) {
+      showToast('Failed to restock', err.response?.data?.message || err.message || 'Please try again', 'error');
+      setRestockProduct(null);
+    } finally {
+      setRestockLoading(false);
+    }
   };
 
   // ========================
@@ -200,28 +293,18 @@ const InventoryPage = () => {
   // ========================
   if (isError) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-[60vh] px-4">
-        <AlertCircle size={48} className="text-neutral-300 mb-4" />
-        <h2 className="text-lg font-semibold text-neutral-900 mb-1">
-          Unable to load inventory
-        </h2>
-        <p className="text-sm text-neutral-500 mb-6 text-center max-w-sm">
-          {error?.message || 'Please check your connection and try again'}
-        </p>
-        <button
-          onClick={() => refetch()}
-          className="px-6 py-2.5 bg-[#312E81] text-white rounded-xl hover:bg-[#1E1B4B] transition-colors font-medium text-sm"
-        >
-          Try Again
-        </button>
-      </div>
+      <ErrorState
+        title="Unable to load inventory"
+        message={error?.message || 'Please check your connection and try again'}
+        onRetry={() => refetch()}
+      />
     );
   }
 
   // ========================
-  // EMPTY STATE (No products)
+  // STATE 1: Truly empty inventory (totalAll = 0, no products at all)
   // ========================
-  if (!hasData) {
+  if (!hasData && totalAll === 0) {
     return (
       <div className="w-full max-w-full overflow-hidden">
         <div className="space-y-6">
@@ -236,29 +319,14 @@ const InventoryPage = () => {
             )}
           </div>
 
-          {/* Filter bar (simplified) */}
-          <div className="bg-white rounded-2xl border border-neutral-200 py-4">
-            <div className="px-4">
-              {/* Search */}
-              <div className="relative w-full md:w-80">
-                <Search size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400" />
-                <input
-                  type="text"
-                  placeholder="Search products..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="w-full h-11 pl-10 pr-4 border border-neutral-300 rounded-xl text-sm placeholder-neutral-400 focus:ring-2 focus:ring-[#312E81]/20 focus:border-[#312E81] outline-none"
-                />
-              </div>
-            </div>
-
-            <CategoryPills
-              categories={shopCategories}
-              total={0}
-              selected={selectedCategory}
-              onSelect={(cat) => setSelectedCategory(cat)}
-            />
-          </div>
+          <InventoryFilterBar
+            searchTerm={searchTerm}
+            onSearchChange={setSearchTerm}
+            categories={shopCategories}
+            total={0}
+            selectedCategory={selectedCategory}
+            onCategorySelect={setSelectedCategory}
+          />
 
           {/* Empty card */}
           <div className="flex flex-col items-center justify-center py-16 md:py-20 sm:max-w-[450px] sm:mx-auto bg-white rounded-2xl border border-neutral-200">
@@ -292,29 +360,23 @@ const InventoryPage = () => {
           </div>
 
           {/* FAB */}
-          <button
-            onClick={() => navigate('/dashboard/inventory/add')}
-            className="fixed md:bottom-6 md:right-6 bottom-20 right-4 w-14 h-14 rounded-2xl bg-[#312E81] text-white shadow-lg hover:bg-[#1E1B4B] hover:scale-105 hover:shadow-xl transition-all duration-200 flex items-center justify-center z-40"
-            aria-label="Add product"
-          >
-            <Package size={24} />
-          </button>
+          <AddProductFAB icon="package" />
         </div>
       </div>
     );
   }
 
   // ========================
-  // EMPTY CATEGORY (Selected category has 0 products)
+  // STATE 2: Products exist but current filters return nothing
   // ========================
-  const isCategoryOnlyFilter = selectedCategory !== 'all' &&
-    selectedStockStatus === 'all' &&
-    !searchTerm &&
-    !attrFilters.size &&
-    !attrFilters.color &&
-    !attrFilters.brand;
+  if (hasData && sortedProducts.length === 0) {
+    const isCategoryOnlyFilter = selectedCategory !== 'all' &&
+      selectedStockStatus === 'all' &&
+      !searchTerm &&
+      !attrFilters.size &&
+      !attrFilters.color &&
+      !attrFilters.brand;
 
-  if (isCategoryOnlyFilter && products.length === 0 && hasData) {
     return (
       <div className="w-full max-w-full overflow-hidden">
         <div className="space-y-6">
@@ -329,139 +391,64 @@ const InventoryPage = () => {
             )}
           </div>
 
-          {/* Filter bar with CategoryPills */}
-          <div className="bg-white rounded-2xl border border-neutral-200 py-4">
-            <div className="px-4">
-              <div className="relative w-full md:w-80">
-                <Search size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400" />
-                <input
-                  type="text"
-                  placeholder="Search products..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="w-full h-11 pl-10 pr-4 border border-neutral-300 rounded-xl text-sm placeholder-neutral-400 focus:ring-2 focus:ring-[#312E81]/20 focus:border-[#312E81] outline-none"
-                />
-              </div>
-            </div>
-            <CategoryPills
-              categories={shopCategories}
-              total={total}
-              selected={selectedCategory}
-              onSelect={(cat) => { setSelectedCategory(cat); setPage(1); }}
-            />
-          </div>
+          <InventoryFilterBar
+            searchTerm={searchTerm}
+            onSearchChange={setSearchTerm}
+            categories={shopCategories}
+            total={totalAll}
+            selectedCategory={selectedCategory}
+            onCategorySelect={setSelectedCategory}
+            onPageReset={() => setPage(1)}
+          />
 
-          {/* Empty category card */}
-          <div className="flex flex-col items-center justify-center py-16 md:py-20 bg-white rounded-2xl border border-neutral-200">
-            <Package size={56} className="text-neutral-200 mb-4" />
-            <h3 className="text-lg font-semibold text-[#1E293B] mb-1">
-              No products in {selectedCategory}
-            </h3>
-            <p className="text-sm text-[#64748B] mb-6 text-center max-w-sm px-4">
-              {isCashier ? 'No products in this category yet.' : 'Add your first product in this category'}
-            </p>
-            {canAdd && (
-            <div className="flex flex-col sm:flex-row gap-3 items-center">
-              <button
-                onClick={() => navigate(`/dashboard/inventory/add?category=${encodeURIComponent(selectedCategory)}`)}
-                className="flex items-center justify-center gap-2 h-11 px-6 bg-[#312E81] text-white rounded-xl hover:bg-[#1E1B4B] transition-colors text-sm font-medium"
-              >
-                <Plus size={18} />
-                <span>Add Product in {selectedCategory}</span>
-              </button>
+          {/* No results card */}
+          {isCategoryOnlyFilter ? (
+            <div className="flex flex-col items-center justify-center py-16 md:py-20 bg-white rounded-2xl border border-neutral-200">
+              <Package size={56} className="text-neutral-200 mb-4" />
+              <h3 className="text-lg font-semibold text-[#1E293B] mb-1">
+                No products in {selectedCategory}
+              </h3>
+              <p className="text-sm text-[#64748B] mb-6 text-center max-w-sm px-4">
+                {isCashier ? 'No products in this category yet.' : 'Add your first product in this category'}
+              </p>
+              {canAdd && (
+              <div className="flex flex-col sm:flex-row gap-3 items-center">
+                <button
+                  onClick={() => navigate(`/dashboard/inventory/add?category=${encodeURIComponent(selectedCategory)}`)}
+                  className="flex items-center justify-center gap-2 h-11 px-6 bg-[#312E81] text-white rounded-xl hover:bg-[#1E1B4B] transition-colors text-sm font-medium"
+                >
+                  <Plus size={18} />
+                  <span>Add Product in {selectedCategory}</span>
+                </button>
+                <button
+                  onClick={clearAllFilters}
+                  className="text-sm font-medium text-[#312E81] hover:underline"
+                >
+                  Or Clear Filter to see all products
+                </button>
+              </div>
+              )}
+            </div>
+          ) : (
+            <div className="flex flex-col items-center justify-center py-20 bg-white rounded-2xl border border-neutral-200">
+              <Search size={48} className="text-neutral-300 mb-4" />
+              <h3 className="text-lg font-semibold text-[#1E293B] mb-2">
+                No products match your filters
+              </h3>
+              <p className="text-sm text-[#64748B] mb-6 text-center max-w-sm px-4">
+                Try adjusting your search or filter criteria.
+              </p>
               <button
                 onClick={clearAllFilters}
-                className="text-sm font-medium text-[#312E81] hover:underline"
+                className="flex items-center gap-2 px-6 py-2.5 bg-white border-[1.5px] border-neutral-300 text-neutral-700 rounded-xl hover:bg-neutral-50 transition-colors text-sm font-medium"
               >
-                Or Clear Filter to see all products
+                Clear All Filters
               </button>
             </div>
-            )}
-          </div>
+          )}
 
           {/* FAB */}
-          {canAdd && (
-          <button
-            onClick={() => navigate('/dashboard/inventory/add')}
-            className="fixed md:bottom-6 md:right-6 bottom-20 right-4 w-14 h-14 rounded-2xl bg-[#312E81] text-white shadow-lg hover:bg-[#1E1B4B] hover:scale-105 hover:shadow-xl transition-all duration-200 flex items-center justify-center z-40"
-            aria-label="Add product"
-          >
-            <Package size={24} />
-          </button>
-          )}
-        </div>
-      </div>
-    );
-  }
-
-  // ========================
-  // NO RESULTS (Filters active, no matches)
-  // ========================
-  if (hasActiveFilters && products.length === 0) {
-    return (
-      <div className="w-full max-w-full overflow-hidden">
-        <div className="space-y-6">
-          {/* Header */}
-          <div className="flex items-center justify-between">
-            <h1 className="text-2xl font-bold text-neutral-900">Inventory</h1>
-            {canAdd && (
-            <AddProductDropdown
-              onBarcodeClick={() => setShowBarcodeModal(true)}
-              onCsvClick={() => setShowCsvModal(true)}
-            />
-            )}
-          </div>
-
-          {/* Filter bar (simplified) */}
-          <div className="bg-white rounded-2xl border border-neutral-200 py-4">
-            <div className="px-4">
-              <div className="relative w-full md:w-80">
-                <Search size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400" />
-                <input
-                  type="text"
-                  placeholder="Search products..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="w-full h-11 pl-10 pr-4 border border-neutral-300 rounded-xl text-sm placeholder-neutral-400 focus:ring-2 focus:ring-[#312E81]/20 focus:border-[#312E81] outline-none"
-                />
-              </div>
-            </div>
-            <CategoryPills
-              categories={shopCategories}
-              total={total}
-              selected={selectedCategory}
-              onSelect={(cat) => { setSelectedCategory(cat); setPage(1); }}
-            />
-          </div>
-
-          {/* No results */}
-          <div className="flex flex-col items-center justify-center py-20 bg-white rounded-2xl border border-neutral-200">
-            <Search size={48} className="text-neutral-300 mb-4" />
-            <h3 className="text-lg font-semibold text-[#1E293B] mb-2">
-              No products match your criteria
-            </h3>
-            <p className="text-sm text-[#64748B] mb-6 text-center max-w-sm px-4">
-              Try adjusting your filters or search term
-            </p>
-            <button
-              onClick={clearAllFilters}
-              className="flex items-center gap-2 px-6 py-2.5 bg-[#312E81] text-white rounded-xl hover:bg-[#1E1B4B] transition-colors text-sm font-medium"
-            >
-              <X size={18} />
-              <span>Clear Filters</span>
-            </button>
-          </div>
-
-          {/* FAB */}
-          {canAdd && (
-          <button
-            onClick={() => navigate('/dashboard/inventory/add')}
-            className="fixed md:bottom-6 md:right-6 bottom-20 right-4 w-14 h-14 rounded-2xl bg-[#312E81] text-white shadow-lg hover:bg-[#1E1B4B] hover:scale-105 hover:shadow-xl transition-all duration-200 flex items-center justify-center z-40"
-            aria-label="Add product"
-          >
-            <Package size={24} />
-          </button>
-          )}
+          {canAdd && <AddProductFAB icon="package" />}
         </div>
       </div>
     );
@@ -472,13 +459,48 @@ const InventoryPage = () => {
   // ========================
   return (
     <div className="w-full max-w-full overflow-hidden">
+      {/* Toast Notification */}
+      {toast && (
+        <div className="fixed top-4 right-4 sm:bottom-auto sm:top-4 bottom-6 left-1/2 -translate-x-1/2 sm:left-auto sm:translate-x-0 z-[100] animate-[slideInRight_0.3s_ease-out]">
+          <div className={`bg-white rounded-xl shadow-lg border-l-4 py-3.5 px-[18px] flex items-start gap-3 max-w-sm ${
+            toast.type === 'error' ? 'border-l-red-500' : 'border-l-[#10B981]'
+          }`}>
+            {toast.type === 'error' ? (
+              <AlertCircle size={20} className="text-red-500 flex-shrink-0 mt-0.5" />
+            ) : (
+              <CheckCircle size={20} className="text-[#10B981] flex-shrink-0 mt-0.5" />
+            )}
+            <div className="min-w-0">
+              <p className="text-sm font-semibold text-neutral-900">{toast.message}</p>
+              {toast.productName && (
+                <p className="text-xs text-neutral-500 mt-0.5 truncate">
+                  &ldquo;{toast.productName}&rdquo; has been permanently deleted.
+                </p>
+              )}
+              {toast.type === 'restock' && toast.quantity && (
+                <div className="text-xs text-neutral-500 mt-0.5 space-y-0.5">
+                  <p>{toast.quantity} units added to {toast.productName}.</p>
+                  <p>New stock: {toast.newStock} units</p>
+                </div>
+              )}
+            </div>
+            <button
+              onClick={() => setToast(null)}
+              className="flex-shrink-0 ml-2 text-neutral-400 hover:text-neutral-600"
+            >
+              <X size={16} />
+            </button>
+          </div>
+        </div>
+      )}
+
       <div className="space-y-6">
         {/* Page Header */}
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-2xl font-bold text-neutral-900">Inventory</h1>
             <p className="text-sm text-neutral-500 mt-1">
-              {total} product{total !== 1 ? 's' : ''} across {shopCategories.length} categor{shopCategories.length !== 1 ? 'ies' : 'y'}
+              {totalFiltered} product{totalFiltered !== 1 ? 's' : ''} across {shopCategories.length} categor{shopCategories.length !== 1 ? 'ies' : 'y'}
             </p>
           </div>
           <div className="flex gap-2">
@@ -572,7 +594,7 @@ const InventoryPage = () => {
           {/* Category pills */}
           <CategoryPills
             categories={shopCategories}
-            total={total}
+            total={totalAll}
             selected={selectedCategory}
             onSelect={(cat) => { setSelectedCategory(cat); setPage(1); }}
           />
@@ -581,9 +603,9 @@ const InventoryPage = () => {
           <div className="flex gap-2 overflow-x-auto px-4 mt-2 scrollbar-none">
             {[
               { value: 'all', label: 'All Stock' },
-              { value: 'in_stock', label: 'In Stock' },
-              { value: 'low_stock', label: 'Low Stock' },
-              { value: 'out_of_stock', label: 'Out of Stock' },
+              { value: 'in_stock', label: `In Stock (${data?.stockStatus?.inStock || 0})` },
+              { value: 'low_stock', label: `Low Stock (${data?.stockStatus?.lowStock || 0})` },
+              { value: 'out_of_stock', label: `Out of Stock (${data?.stockStatus?.outOfStock || 0})` },
             ].map((opt) => (
               <button
                 key={opt.value}
@@ -628,59 +650,59 @@ const InventoryPage = () => {
 
         {/* Active filter chips */}
         {hasActiveFilters && (
-          <div className="flex flex-wrap items-center gap-2 px-4 py-3 bg-[#EEF2FF] border border-[#312E81]/10 rounded-xl">
-            <span className="text-xs font-medium text-[#312E81]">Active Filters:</span>
+          <div className="flex flex-wrap items-center gap-2 px-4 py-2.5 bg-[#EEF2FF] rounded-xl">
+            <span className="text-xs font-medium text-[#312E81] mr-1">Active Filters:</span>
             {selectedCategory !== 'all' && (
-              <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-white border border-[#312E81]/20 rounded-full text-xs text-[#312E81]">
-                Category: {selectedCategory}
-                <button onClick={() => setSelectedCategory('all')}>
+              <span className="inline-flex items-center gap-1 px-3 py-1.5 bg-[#EEF2FF] rounded-full text-xs text-[#312E81]">
+                {selectedCategory}
+                <button onClick={() => { setSelectedCategory('all'); setPage(1); }} className="hover:opacity-70">
                   <X size={12} />
                 </button>
               </span>
             )}
             {selectedStockStatus !== 'all' && (
-              <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-white border border-[#312E81]/20 rounded-full text-xs text-[#312E81]">
+              <span className="inline-flex items-center gap-1 px-3 py-1.5 bg-[#EEF2FF] rounded-full text-xs text-[#312E81]">
                 {selectedStockStatus === 'in_stock' ? 'In Stock' : selectedStockStatus === 'low_stock' ? 'Low Stock' : 'Out of Stock'}
-                <button onClick={() => setSelectedStockStatus('all')}>
+                <button onClick={() => { setSelectedStockStatus('all'); setPage(1); }} className="hover:opacity-70">
                   <X size={12} />
                 </button>
               </span>
             )}
             {attrFilters.size && (
-              <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-white border border-[#312E81]/20 rounded-full text-xs text-[#312E81]">
-                Size: {attrFilters.size}
-                <button onClick={() => setAttrFilters(prev => ({ ...prev, size: '' }))}>
+              <span className="inline-flex items-center gap-1 px-3 py-1.5 bg-[#EEF2FF] rounded-full text-xs text-[#312E81]">
+                {attrFilters.size}
+                <button onClick={() => setAttrFilters(prev => ({ ...prev, size: '' }))} className="hover:opacity-70">
                   <X size={12} />
                 </button>
               </span>
             )}
             {attrFilters.color && (
-              <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-white border border-[#312E81]/20 rounded-full text-xs text-[#312E81]">
-                Color: {attrFilters.color}
-                <button onClick={() => setAttrFilters(prev => ({ ...prev, color: '' }))}>
+              <span className="inline-flex items-center gap-1 px-3 py-1.5 bg-[#EEF2FF] rounded-full text-xs text-[#312E81]">
+                {attrFilters.color}
+                <button onClick={() => setAttrFilters(prev => ({ ...prev, color: '' }))} className="hover:opacity-70">
                   <X size={12} />
                 </button>
               </span>
             )}
             {attrFilters.brand && (
-              <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-white border border-[#312E81]/20 rounded-full text-xs text-[#312E81]">
-                Brand: {attrFilters.brand}
-                <button onClick={() => setAttrFilters(prev => ({ ...prev, brand: '' }))}>
+              <span className="inline-flex items-center gap-1 px-3 py-1.5 bg-[#EEF2FF] rounded-full text-xs text-[#312E81]">
+                {attrFilters.brand}
+                <button onClick={() => setAttrFilters(prev => ({ ...prev, brand: '' }))} className="hover:opacity-70">
                   <X size={12} />
                 </button>
               </span>
             )}
             {searchTerm && (
-              <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-white border border-[#312E81]/20 rounded-full text-xs text-[#312E81]">
+              <span className="inline-flex items-center gap-1 px-3 py-1.5 bg-[#EEF2FF] rounded-full text-xs text-[#312E81]">
                 "{searchTerm}"
-                <button onClick={() => setSearchTerm('')}>
+                <button onClick={() => setSearchTerm('')} className="hover:opacity-70">
                   <X size={12} />
                 </button>
               </span>
             )}
             <button
               onClick={() => { clearAllFilters(); setAttrFilters({ size: '', color: '', brand: '' }); }}
-              className="ml-auto text-xs font-medium text-[#312E81] hover:underline"
+              className="ml-auto text-xs font-medium text-[#312E81] hover:underline whitespace-nowrap"
             >
               Clear All
             </button>
@@ -690,11 +712,11 @@ const InventoryPage = () => {
         {/* Product Grid */}
         {viewMode === 'grid' ? (
           <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 md:gap-5">
-            {products.map((product) => (
+            {paginatedProducts.map((product) => (
               <ProductCard
                 key={product._id}
                 product={product}
-                onEdit={canEdit ? (p) => navigate(`/inventory/${p._id}`) : undefined}
+                onEdit={canEdit ? (p) => navigate(`/dashboard/inventory/${p._id}`) : undefined}
                 onRestock={canEdit ? setRestockProduct : undefined}
                 onDuplicate={canAdd ? (p) => navigate(`/dashboard/inventory/add?duplicate=${p._id}`) : undefined}
                 onDelete={canDelete ? setDeleteProduct : undefined}
@@ -717,10 +739,10 @@ const InventoryPage = () => {
                   </tr>
                 </thead>
                 <tbody>
-                  {products.map((product) => {
+                  {paginatedProducts.map((product) => {
                     const badge = getStockBadge(product.status);
                     return (
-                      <tr key={product._id} onClick={() => navigate(`/inventory/${product._id}`)} className="border-t border-neutral-100 hover:bg-neutral-50 transition-colors cursor-pointer">
+                      <tr key={product._id} onClick={() => navigate(`/dashboard/inventory/${product._id}`)} className="border-t border-neutral-100 hover:bg-neutral-50 transition-colors cursor-pointer">
                         <td className="py-3 px-4">
                           <span className="text-sm font-medium text-[#1E293B]">{product.name}</span>
                         </td>
@@ -763,7 +785,7 @@ const InventoryPage = () => {
             {/* Desktop pagination */}
             <div className="hidden sm:flex items-center justify-between">
               <p className="text-sm text-[#64748B]">
-                Showing {(page - 1) * 20 + 1}-{Math.min(page * 20, total)} of {total} products
+                Showing {(page - 1) * 20 + 1}-{Math.min(page * 20, totalFiltered)} of {totalFiltered} products
               </p>
               <div className="flex items-center gap-1.5">
                 <button
@@ -811,7 +833,7 @@ const InventoryPage = () => {
                 </button>
               ) : (
                 <p className="text-sm text-[#64748B]">
-                  Showing all {total} products
+                  Showing all {totalFiltered} products
                 </p>
               )}
             </div>
@@ -819,15 +841,7 @@ const InventoryPage = () => {
         )}
 
         {/* FAB */}
-        {canAdd && (
-        <button
-          onClick={() => navigate('/dashboard/inventory/add')}
-          className="fixed md:bottom-6 md:right-6 bottom-20 right-4 w-14 h-14 rounded-2xl bg-[#312E81] text-white shadow-lg hover:bg-[#1E1B4B] hover:scale-105 hover:shadow-xl transition-all duration-200 flex items-center justify-center z-40"
-          aria-label="Add product"
-        >
-          <Plus size={24} />
-        </button>
-        )}
+        {canAdd && <AddProductFAB />}
       </div>
 
       {/* Restock Modal */}
@@ -835,10 +849,8 @@ const InventoryPage = () => {
         <RestockModal
           product={restockProduct}
           onClose={() => setRestockProduct(null)}
-          onConfirm={(data) => {
-            console.log('Restock:', data);
-            setRestockProduct(null);
-          }}
+          onConfirm={handleRestockConfirm}
+          loading={restockLoading}
         />
       )}
 
@@ -846,13 +858,9 @@ const InventoryPage = () => {
       {deleteProduct && (
         <DeleteConfirmModal
           product={deleteProduct}
-          onClose={() => setDeleteProduct(null)
-             
-          }
-          onConfirm={(product) => {
-            console.log('Delete:', product._id);
-            setDeleteProduct(null);
-          }}
+          onClose={() => setDeleteProduct(null)}
+          onConfirm={handleDeleteConfirm}
+          loading={deleteLoading}
         />
       )}
 

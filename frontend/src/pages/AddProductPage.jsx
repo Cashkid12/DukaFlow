@@ -1726,7 +1726,7 @@ const AddProductPage = () => {
                     </label>
                     <label className="flex items-center gap-3 cursor-pointer">
                       <input
-                        type="checkbox"
+                        type="checkbox"    
                         checked={csvImportSettings.autoCreateCategories}
                         onChange={(e) => setCsvImportSettings((s) => ({ ...s, autoCreateCategories: e.target.checked }))}
                         className="w-4 h-4 rounded accent-[#312E81]"
@@ -1854,3 +1854,4 @@ const AddProductPage = () => {
 };
 
 export default AddProductPage;
+ 

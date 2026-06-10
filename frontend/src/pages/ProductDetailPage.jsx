@@ -17,6 +17,7 @@ import {
   useUploadImage,
 } from '../hooks/useProductDetail';
 import { formatCurrency, formatDateTime } from '../utils/formatters';
+import { getStockBadge, getStockBarHex } from '../utils/stockBadge';
 import RestockModal from '../components/inventory/RestockModal';
 import DeleteConfirmModal from '../components/inventory/DeleteConfirmModal';
 
@@ -29,31 +30,27 @@ const TABS = [
 ];
 
 // ── Helpers ────────────────────────────────────────────
-const getStatusBadge = (status, stock) => {
-  switch (status) {
-    case 'in_stock':
-      return {
-        bg: 'bg-[#D1FAE5]', text: 'text-[#10B981]',
-        label: `${stock} in stock`, icon: CheckCircle,
-      };
-    case 'low_stock':
-      return {
-        bg: 'bg-[#FEF3C7]', text: 'text-[#F59E0B]',
-        label: `${stock} left`, icon: AlertTriangle,
-      };
-    default:
-      return {
-        bg: 'bg-[#FEE2E2]', text: 'text-[#EF4444]',
-        label: 'Out of stock', icon: XCircle,
-      };
-  }
+// Stock icons for ProductDetailPage (kept local since utils shouldn't import lucide)
+const STOCK_ICONS = {
+  in_stock: CheckCircle,
+  low_stock: AlertTriangle,
+  out_of_stock: XCircle,
 };
 
-const getStockBarColor = (status) => {
-  if (status === 'in_stock') return 'bg-[#10B981]';
-  if (status === 'low_stock') return 'bg-[#F59E0B]';
-  return 'bg-[#EF4444]';
+const getStatusBadge = (status, stock) => {
+  const base = getStockBadge(status);
+  const icon = STOCK_ICONS[status] || CheckCircle;
+  if (status === 'out_of_stock') {
+    return { ...base, label: 'Out of stock', icon };
+  }
+  return {
+    ...base,
+    label: status === 'low_stock' ? `${stock} left` : `${stock} in stock`,
+    icon,
+  };
 };
+
+const getStockBarColor = (status) => `bg-[${getStockBarHex(status)}]`;
 
 const getProfitColor = (margin) => {
   if (margin >= 20) return 'text-[#10B981]';
@@ -179,9 +176,12 @@ const ProductDetailPage = () => {
   const [editMode, setEditMode] = useState(false);
   const [showRestock, setShowRestock] = useState(false);
   const [showDelete, setShowDelete] = useState(false);
+  const [deleteLoading, setDeleteLoading] = useState(false);
+  const [restockLoading, setRestockLoading] = useState(false);
   const [selectedImage, setSelectedImage] = useState(0);
   const [saving, setSaving] = useState(false);
   const [editError, setEditError] = useState('');
+  const [toast, setToast] = useState(null);
 
   // Edit form state
   const [form, setForm] = useState({});
@@ -294,26 +294,63 @@ const ProductDetailPage = () => {
   };
 
   const handleDelete = async (prod) => {
+    setDeleteLoading(true);
     try {
       await deleteProduct(prod._id);
-      navigate('/dashboard/inventory');
-    } catch {
-      alert('Failed to delete product');
+      setShowDelete(false);
+      setDeleteLoading(false);
+      // Show success toast, then navigate
+      setToast({
+        type: 'delete',
+        message: 'Product Deleted',
+        productName: prod.name,
+      });
+      setTimeout(() => {
+        navigate('/dashboard/inventory');
+      }, 800);
+    } catch (err) {
+      setDeleteLoading(false);
+      setToast({
+        type: 'error',
+        message: 'Failed to delete product',
+        productName: err.message || 'Please try again',
+      });
+      setTimeout(() => setToast(null), 3000);
     }
   };
 
   const handleRestock = async (data) => {
+    setRestockLoading(true);
     try {
-      await restockProduct({
+      const result = await restockProduct({
         productId,
         quantity: data.quantity,
-        newCostPrice: data.newBuyingPrice,
+        newCostPrice: data.newCostPrice,
         newSellingPrice: data.newSellingPrice,
         supplier: form.supplier || '',
       });
       setShowRestock(false);
+      setRestockLoading(false);
+      // Show success feedback
+      const qtyAdded = result?.quantityAdded || data.quantity;
+      const updatedStock = result?.newStock || (product.stock + data.quantity);
+      setToast({
+        type: 'restock',
+        message: 'Stock Updated',
+        productName: product.name,
+        quantity: qtyAdded,
+        newStock: updatedStock,
+      });
+      setTimeout(() => setToast(null), 3000);
+      refetch();
     } catch (err) {
-      alert(err.message || 'Failed to restock');
+      setRestockLoading(false);
+      setToast({
+        type: 'error',
+        message: 'Failed to restock',
+        productName: err.message || 'Please try again',
+      });
+      setTimeout(() => setToast(null), 3000);
     }
   };
 
@@ -567,6 +604,46 @@ const ProductDetailPage = () => {
   // ── VIEW MODE ──────────────────────────────────────
   return (
     <div className="w-full max-w-full overflow-hidden space-y-6">
+      {/* Toast Notification */}
+      {toast && (
+        <div className="fixed top-4 right-4 sm:bottom-auto sm:top-4 bottom-20 left-4 sm:left-auto z-[100] animate-[slideInRight_0.3s_ease-out]">
+          <div className={`bg-white rounded-xl shadow-lg border-l-4 px-4 py-3.5 flex items-start gap-3 max-w-sm ${
+            toast.type === 'error' ? 'border-l-red-500' : 'border-l-[#10B981]'
+          }`}>
+            {toast.type === 'error' ? (
+              <AlertTriangle size={20} className="text-red-500 flex-shrink-0 mt-0.5" />
+            ) : (
+              <CheckCircle size={20} className="text-[#10B981] flex-shrink-0 mt-0.5" />
+            )}
+            <div className="min-w-0">
+              <p className="text-sm font-semibold text-neutral-900">{toast.message}</p>
+              {toast.type === 'delete' && toast.productName && (
+                <p className="text-xs text-neutral-500 mt-0.5 truncate">
+                  &ldquo;{toast.productName}&rdquo; has been permanently deleted.
+                </p>
+              )}
+              {toast.type !== 'delete' && toast.productName && (
+                <p className="text-xs text-neutral-500 mt-0.5 truncate">
+                  &ldquo;{toast.productName}&rdquo;
+                </p>
+              )}
+              {toast.type === 'restock' && toast.quantity && (
+                <div className="text-xs text-neutral-500 mt-0.5 space-y-0.5">
+                  <p>{toast.quantity} units added to {toast.productName}.</p>
+                  <p>New stock: {toast.newStock} units</p>
+                </div>
+              )}
+            </div>
+            <button
+              onClick={() => setToast(null)}
+              className="flex-shrink-0 ml-2 text-neutral-400 hover:text-neutral-600"
+            >
+              <X size={16} />
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Back Button */}
       <button
         onClick={() => navigate('/dashboard/inventory')}
@@ -1107,6 +1184,7 @@ const ProductDetailPage = () => {
           product={product}
           onClose={() => setShowRestock(false)}
           onConfirm={handleRestock}
+          loading={restockLoading}
         />
       )}
 
@@ -1115,6 +1193,7 @@ const ProductDetailPage = () => {
           product={product}
           onClose={() => setShowDelete(false)}
           onConfirm={handleDelete}
+          loading={deleteLoading}
         />
       )}
     </div>

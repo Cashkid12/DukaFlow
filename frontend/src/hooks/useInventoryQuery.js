@@ -11,45 +11,36 @@ const EMPTY_INVENTORY = {
   hasData: false,
   products: [],
   total: 0,
-  categories: ['Trousers', 'Shirts', 'Dresses', 'Jackets', 'Shoes', 'Accessories'],
-  filters: {
-    sizes: [],
-    colors: [],
-    brands: [],
-  },
+  totalAll: 0,
+  categories: [],
+  stockStatus: { inStock: 0, lowStock: 0, outOfStock: 0 },
+  filters: { sizes: [], colors: [], brands: [] },
 };
 
 /**
- * React Query hook for inventory products.
- * - Fetches GET /api/products with Clerk Bearer token
- * - On network error: throws so component can show error UI with retry
- * - On HTTP error (4xx/5xx): returns EMPTY_INVENTORY gracefully
- * - 30s stale time, refetches on window focus
+ * React Query hook for inventory — ONE API call returns everything.
+ * - Fetches ALL products (limit=0) — no server-side filtering
+ * - Returns categories (with counts), stockStatus, filters alongside products
+ * - Client-side filtering/sorting/pagination happens in the component
+ * - staleTime: 30s, auto-refetch every 60s
+ * - Socket events trigger invalidateQueries for real-time updates
  */
-export const useInventoryQuery = (filters = {}) => {
+export const useInventoryQuery = () => {
   const { getToken } = useAuth();
   const queryClient = useQueryClient();
 
   const query = useQuery({
-    queryKey: ['inventory', filters],
+    queryKey: ['inventory'],
     queryFn: async () => {
       const token = await getToken();
       if (!token) {
         return EMPTY_INVENTORY;
       }
 
-      // Build query params
+      // Fetch ALL products — no filter params, limit=0 means "no limit"
       const params = new URLSearchParams();
-      if (filters.search) params.append('search', filters.search);
-      if (filters.category && filters.category !== 'all') params.append('category', filters.category);
-      if (filters.stockStatus && filters.stockStatus !== 'all') params.append('stockStatus', filters.stockStatus);
-      if (filters.sortBy) params.append('sortBy', filters.sortBy);
-      if (filters.sortOrder) params.append('sortOrder', filters.sortOrder);
-      params.append('page', filters.page || '1');
-      params.append('limit', '20');
-
-      const queryString = params.toString();
-      const url = `${API_BASE_URL}/products${queryString ? `?${queryString}` : ''}`;
+      params.append('limit', '0');
+      const url = `${API_BASE_URL}/products?${params.toString()}`;
 
       let response;
       try {
@@ -76,20 +67,24 @@ export const useInventoryQuery = (filters = {}) => {
       }
 
       return {
-        hasData: result.data.total > 0,
+        // hasData: true when shop has ANY active products (uses unfiltered totalAll)
+        hasData: (result.data.totalAll ?? result.data.total) > 0,
         products: result.data.products || [],
         total: result.data.total || 0,
+        totalAll: result.data.totalAll ?? (result.data.total || 0),
+        // Categories with counts: [{ name: 'Prescription', count: 5 }, ...]
+        categories: result.data.categories || [],
+        // Stock status counts: { inStock: 8, lowStock: 2, outOfStock: 0 }
+        stockStatus: result.data.stockStatus || { inStock: 0, lowStock: 0, outOfStock: 0 },
+        // Dynamic filters (sizes, colors, brands, etc.)
+        filters: result.data.filters || EMPTY_INVENTORY.filters,
         page: result.data.page || 1,
         totalPages: result.data.totalPages || 1,
         hasMore: result.data.hasMore ?? false,
-        categories: result.data.categories?.length
-          ? result.data.categories
-          : EMPTY_INVENTORY.categories,
-        filters: result.data.filters || EMPTY_INVENTORY.filters,
       };
     },
-    staleTime: 30 * 1000,
-    refetchOnMount: 'always',
+    staleTime: 30 * 1000,        // Keep data fresh for 30 seconds
+    refetchInterval: 60 * 1000,  // Auto-refresh every 60 seconds
     refetchOnWindowFocus: true,
     retry: 1,
   });

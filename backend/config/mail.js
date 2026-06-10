@@ -57,8 +57,13 @@ const getTransporter = async () => {
 const sendEmail = async (options) => {
   const transporter = await getTransporter();
 
+  const fromEmail = process.env.EMAIL_USER || (cachedTestAccount && cachedTestAccount.user) || 'noreply@dukaflow.app';
+  const fromName = options.fromName
+    ? `"${options.fromName} via DukaFlow" <${fromEmail}>`
+    : `DukaFlow <${fromEmail}>`;
+
   const mailOptions = {
-    from: `DukaFlow <${process.env.EMAIL_USER || (cachedTestAccount && cachedTestAccount.user) || 'noreply@dukaflow.app'}>`,
+    from: fromName,
     to: options.to,
     subject: options.subject,
     html: options.html,

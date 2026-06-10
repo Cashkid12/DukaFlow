@@ -42,7 +42,8 @@ export const useProductDetail = (productId) => {
       }
       return result.data;
     },
-    staleTime: 30 * 1000,
+    staleTime: 0,              // Never use stale data — always show latest product info
+    refetchOnMount: 'always',   // Always refetch when navigating to product detail
     refetchOnWindowFocus: true,
     retry: 1,
     enabled: !!productId,

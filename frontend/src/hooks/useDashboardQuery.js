@@ -129,7 +129,7 @@ export const useDashboardQuery = () => {
     staleTime: 0,
     refetchOnMount: 'always',
     refetchOnWindowFocus: true,
-    refetchInterval: 30 * 1000,
+    refetchInterval: 60 * 1000,
     retry: 1,
     placeholderData: (prev) => prev,
   });

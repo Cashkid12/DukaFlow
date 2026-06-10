@@ -106,7 +106,8 @@ exports.getProducts = async (req, res) => {
     }
 
     // Pagination
-    const skip = (parseInt(page) - 1) * parseInt(limit);
+    const limitInt = parseInt(limit);
+    const skip = limitInt > 0 ? (parseInt(page) - 1) * limitInt : 0;
 
     // Sort
     const sortOptions = {};
@@ -126,18 +127,41 @@ exports.getProducts = async (req, res) => {
       sortOptions[sortBy] = sortOrder === 'desc' ? -1 : 1;
     }
 
-    // Execute query
-    const products = await Product.find(query)
-      .sort(sortOptions)
-      .skip(skip)
-      .limit(parseInt(limit))
-      .lean();
+    // Execute query — skip pagination when limit=0 (fetch all)
+    const productQuery = Product.find(query).sort(sortOptions).skip(skip);
+    if (limitInt > 0) productQuery.limit(limitInt);
+    const products = await productQuery.lean();
 
-    // Get total count for pagination
+    // Get total count for pagination (filtered)
     const total = await Product.countDocuments(query);
 
-    // Get unique categories for filter
-    const categories = await Product.distinct('category', { shop: shopId, isActive: true });
+    // Get unfiltered total (all active products in shop — used to detect truly empty inventory)
+    const totalAll = await Product.countDocuments({ shop: shopId, isActive: true });
+
+    // Get unique categories with counts
+    const categoryAgg = await Product.aggregate([
+      { $match: { shop: shopId, isActive: true } },
+      { $group: { _id: '$category', count: { $sum: 1 } } },
+      { $sort: { count: -1 } },
+    ]);
+
+    // If no products yet, return shop's default categories with count 0
+    const defaultCategories = shop?.settings?.categories || [];
+    const categoriesMap = {};
+    defaultCategories.forEach(cat => { categoriesMap[cat] = 0; });
+    categoryAgg.forEach(cat => { categoriesMap[cat._id] = cat.count; });
+
+    const categoriesWithCounts = Object.entries(categoriesMap).map(([name, count]) => ({
+      name,
+      count,
+    }));
+
+    // Stock status counts (computed once, across ALL active products)
+    const stockStatusCounts = {
+      inStock: await Product.countDocuments({ shop: shopId, isActive: true, stock: { $gt: threshold } }),
+      lowStock: await Product.countDocuments({ shop: shopId, isActive: true, stock: { $gt: 0, $lte: threshold } }),
+      outOfStock: await Product.countDocuments({ shop: shopId, isActive: true, stock: 0 }),
+    };
 
     // Get distinct filter values from all active products
     const distinctFilters = await Product.aggregate([
@@ -166,7 +190,7 @@ exports.getProducts = async (req, res) => {
 
     console.log(`✅ Found ${products.length} products (total: ${total})`);
 
-    const totalPages = Math.ceil(total / parseInt(limit));
+    const totalPages = limitInt > 0 ? Math.ceil(total / parseInt(limit)) : 1;
     const currentPage = parseInt(page);
 
     res.status(200).json({
@@ -174,10 +198,12 @@ exports.getProducts = async (req, res) => {
       data: {
         products: productsWithStatus,
         total,
+        totalAll,
         page: currentPage,
         totalPages,
-        hasMore: currentPage < totalPages,
-        categories,
+        hasMore: limitInt > 0 ? (currentPage < totalPages) : false,
+        categories: categoriesWithCounts,
+        stockStatus: stockStatusCounts,
         filters,
       },
     });
@@ -244,6 +270,13 @@ exports.createProduct = async (req, res) => {
 
     const product = new Product(productData);
     await product.save();
+
+    // Emit Socket.io event for real-time dashboard/inventory update
+    const io = req.app.get('io');
+    if (io) {
+      const shopId = req.user.shop?.toString();
+      io.to(shopId).emit('product:created', { productId: product._id, product });
+    }
 
     res.status(201).json({
       success: true,
@@ -332,6 +365,13 @@ exports.deleteProduct = async (req, res) => {
         success: false,
         message: 'Product not found',
       });
+    }
+
+    // Emit Socket.io event for real-time dashboard/inventory update
+    const io = req.app.get('io');
+    if (io) {
+      const shopId = req.user.shop?.toString();
+      io.to(shopId).emit('product:deleted', { productId: product._id });
     }
 
     res.status(200).json({

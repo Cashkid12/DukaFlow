@@ -533,6 +533,7 @@ exports.inviteWorker = async (req, res) => {
     try {
       await sendEmail({
         to: normalizedEmail,
+        fromName: inviterName,
         subject: `You've been invited to join ${shopName} on DukaFlow 🏪`,
         html: buildInvitationEmail({
           workerName: fullName,
@@ -718,6 +719,7 @@ exports.resendInvite = async (req, res) => {
     try {
       await sendEmail({
         to: worker.email,
+        fromName: inviterName,
         subject: `Reminder: Join ${shopName} on DukaFlow 🏪`,
         html: buildInvitationEmail({
           workerName: worker.fullName,
