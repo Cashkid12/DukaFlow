@@ -908,6 +908,9 @@ const WorkersPage = () => {
                         worker={worker}
                         onView={handleViewWorker}
                         onEdit={handleEditRole}
+                        onResend={handleResend}
+                        onCancel={confirmCancel}
+                        isResending={resendingIds.has(worker._id)}
                       />
                     ))}
                   </div>
